@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
 import { Layout } from './components/Layout'
 import { Onboarding } from './components/Onboarding'
+import { Dashboard } from './components/Dashboard'
+import { EvolutionLab } from './components/EvolutionLab'
+import { ReflectionLog } from './components/ReflectionLog'
 
 type View = 'onboarding' | 'dashboard' | 'evolution' | 'archive'
 
@@ -13,27 +16,43 @@ function App() {
 
   return (
     <Layout>
-      <div className="flex-1">
-        {view === 'onboarding' && (
-          <Onboarding onNavigate={() => navigate('dashboard')} />
-        )}
-        {view === 'dashboard' && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-            <p className="text-gray-500">Quest management interface</p>
-          </div>
-        )}
-        {view === 'evolution' && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <h1 className="text-2xl font-bold mb-4">Evolution Lab</h1>
-            <p className="text-gray-500">Quest history and archive</p>
-          </div>
-        )}
-        {view === 'archive' && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <h1 className="text-2xl font-bold mb-4">Archive</h1>
-            <p className="text-gray-500">Past quarters</p>
-          </div>
+      <div className="flex flex-col min-h-screen">
+        <main className="flex-1 overflow-y-auto">
+          {view === 'onboarding' && (
+            <Onboarding onNavigate={() => navigate('dashboard')} />
+          )}
+          {view === 'dashboard' && (
+            <Dashboard onNavigate={navigate} />
+          )}
+          {view === 'evolution' && (
+            <EvolutionLab onNavigate={navigate} />
+          )}
+          {view === 'archive' && (
+            <ReflectionLog onNavigate={navigate} />
+          )}
+        </main>
+
+        {view !== 'onboarding' && (
+          <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-sm border-t border-gray-800 px-6 py-3 flex justify-around items-center text-xs font-mono uppercase tracking-widest">
+            <button
+              onClick={() => navigate('dashboard')}
+              className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+            >
+              <span>Home</span>
+            </button>
+            <button
+              onClick={() => navigate('evolution')}
+              className={`flex flex-col items-center gap-1 ${view === 'evolution' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+            >
+              <span>Evolution</span>
+            </button>
+            <button
+              onClick={() => navigate('archive')}
+              className={`flex flex-col items-center gap-1 ${view === 'archive' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+            >
+              <span>Archive</span>
+            </button>
+          </nav>
         )}
       </div>
     </Layout>

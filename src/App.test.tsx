@@ -60,7 +60,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /go to dashboard/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('Quest Summary')).toBeInTheDocument()
     })
   })
 
@@ -87,7 +87,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: /go to dashboard/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Dashboard')).toBeInTheDocument()
+      expect(screen.getByText('Quest Summary')).toBeInTheDocument()
     })
   })
 })

@@ -20,9 +20,9 @@ export async function saveReflection(
   prompt: string,
   text: string
 ): Promise<void> {
-  const reflections = await db.get(REFLECTIONS_KEY) || {}
+  const reflectionsMap = await db.get(REFLECTIONS_KEY) || {}
 
-  reflections[date] = {
+  const newReflection: Reflection = {
     id: uuidv4(),
     questId,
     date,
@@ -31,15 +31,21 @@ export async function saveReflection(
     createdAt: Date.now()
   }
 
-  await db.save(REFLECTIONS_KEY, reflections)
+  if (!reflectionsMap[date]) {
+    reflectionsMap[date] = []
+  }
+
+  reflectionsMap[date].push(newReflection)
+
+  await db.save(REFLECTIONS_KEY, reflectionsMap)
 }
 
-export async function getReflectionsForDate(date: string): Promise<Record<string, Reflection>> {
-  const reflections = await db.get(REFLECTIONS_KEY) || {}
-  return reflections[date] ? { [date]: reflections[date] } : {}
+export async function getReflectionsForDate(date: string): Promise<Reflection[]> {
+  const reflectionsMap = await db.get(REFLECTIONS_KEY) || {}
+  return reflectionsMap[date] || []
 }
 
-export async function getAllReflections(): Promise<Record<string, Reflection>> {
+export async function getAllReflections(): Promise<Record<string, Reflection[]>> {
   return await db.get(REFLECTIONS_KEY) || {}
 }
 
