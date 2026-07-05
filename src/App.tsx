@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Layout } from './components/Layout'
+import { Onboarding } from './components/Onboarding'
 
 type View = 'onboarding' | 'dashboard' | 'evolution' | 'archive'
 
@@ -14,15 +15,7 @@ function App() {
     <Layout>
       <div className="flex-1">
         {view === 'onboarding' && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <h1 className="text-2xl font-bold mb-4">Welcome to Cadence</h1>
-            <button
-              onClick={() => navigate('dashboard')}
-              className="px-6 py-3 bg-[#D4AF37] text-[#0F1113] rounded-full font-semibold hover:opacity-90 transition"
-            >
-              Get Started
-            </button>
-          </div>
+          <Onboarding onNavigate={() => navigate('dashboard')} />
         )}
         {view === 'dashboard' && (
           <div className="flex flex-col items-center justify-center h-full">
