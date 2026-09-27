@@ -20,4 +20,9 @@ Context: [What a Quest is made of](03-quest-anatomy.md) fixes the content:
 - 1–5 ordered list items;
 - single-line parts, so Return never inserts a line break.
 
+[Quarter boundaries](04-quarter-boundaries.md) fixes the frame:
+- the top of setup names the target Quarter ("Q4 2026 · 1 Oct – 31 Dec") with a one-tap switch between the current and upcoming Quarter;
+- setup isn't done until both Quests are finished, and reopening the app resumes it;
+- the same flow serves "Set up Q1 2027" later, starting from a blank Scaffold.
+
 Deliverable: a rough clickable prototype the owner can open on their iPhone (LAN or tunnel), linked from this ticket.

@@ -44,6 +44,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [iOS storage durability & backup mechanics](issues/01-ios-storage-durability.md): Home Screen storage is separate from Safari and exempt from the 7-day cap. Call `persist()` on launch. Deleting the icon likely wipes data. Export via Web Share files, import via file input. Upgrade `idb-keyval` to 6.3 with a named store and retry-once on connection loss.
 - [GitHub Pages + PWA setup for iOS install](issues/02-github-pages-pwa-setup.md): `base: '/cadence/'`. Fix the update path (it never auto-applies today). Upgrade to Vite 8 / vite-plugin-pwa 1.3 / vitest 4.1 on Node 24. Official Actions deploy. 180px opaque touch icon + `viewport-fit=cover`. Namespaced IDB store. Origin is permanent.
 - [What a Quest is made of](issues/03-quest-anatomy.md): six single-line Scaffold parts, with a new optional Obstacle and reworded metrics. Lists hold 1–5 items. Nothing tracked. The morning re-read shows the whole Quest. "Prompts to find it" are thinking aids.
+- [Quarter boundaries](issues/04-quarter-boundaries.md): setup targets the current Quarter, or the upcoming one in the last 14 days, with a one-tap switch. Day N counts from the calendar Quarter's start. A Quarter is set up once both Quests are finished. Reflecting happens only on a Day of a set-up Quarter. Past Quarters are read-only and not browsable in v1. v1 offers plain setup of the next Quarter.
 
 ## Not yet specified
 
@@ -56,7 +57,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - **Reminders / push notifications:** would need a server; an iOS Reminder covers it.
 - **Migrating existing data:** none worth keeping.
 - **App Store / native wrapper:** the point is to avoid it.
-- **Quarter rollover flow:** post-v1, needed before 1 Jan 2027. The data model must still know about Quarters from day one ([Quarter boundaries](issues/04-quarter-boundaries.md)).
+- **Quarter rollover flow** (review, verdict, carry-over): post-v1. v1 already offers plain setup of the next Quarter, so 1 Jan 2027 isn't a hard deadline ([Quarter boundaries](issues/04-quarter-boundaries.md)).
 - **Comparing Quest versions:** post-v1.
 - **Motion polish (check-in pulse, screen slides):** post-v1 unless it comes almost free.
 - **Archive filters:** post-v1.

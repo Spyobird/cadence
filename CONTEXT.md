@@ -8,6 +8,22 @@ A personal tool for committing to two goals each quarter and reflecting on them 
 A calendar quarter (Jan–Mar, Apr–Jun, Jul–Sep, Oct–Dec). The unit of commitment; its length is 90–92 days.
 _Avoid_: Cycle, 90-day block, season
 
+**Current Quarter**:
+The Quarter that contains today's date, by the phone's local calendar.
+_Avoid_: Active quarter
+
+**Upcoming Quarter**:
+The Quarter after the current one. It can be set up before it starts.
+_Avoid_: Next cycle
+
+**Past Quarter**:
+A Quarter whose last day has gone. Its Quests and reflections are kept as they were and never change.
+_Avoid_: Archived quarter, closed quarter (the Archive is the reflections feed)
+
+**Day**:
+A date's position within its Quarter: Day 1 on the first day, up to Day 90–92 on the last. Counted from the Quarter's start, not from when it was set up.
+_Avoid_: Cycle day
+
 **Quest**:
 One of the two goals — **Life** or **Work** — committed to for a Quarter, written by completing the Scaffold. Every Quarter has exactly one of each. Its parts, in order: Main Quest, Why it matters, Success Metrics, Why it's exciting, Obstacle, Commitments.
 _Avoid_: Goal, objective
