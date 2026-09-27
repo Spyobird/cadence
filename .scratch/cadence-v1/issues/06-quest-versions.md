@@ -14,4 +14,4 @@ What counts as a new version of a Quest, and what is the history for?
 - Should each reflection record the version it was written against?
 - What must the v1 history list show? (Comparing versions is out of scope.)
 
-Context: `CLAUDE.md` "Quests are never overwritten"; [audit.md](../audit.md) bug 2 (exponential history).
+Context: `CLAUDE.md` "Quests are never overwritten"; [audit.md](../audit.md) bug 2 (exponential history); [What a Quest is made of](03-quest-anatomy.md). A version is of the whole six-part Quest. Editing out a done Commitment and adding an Obstacle mid-quarter both make versions. A pivot might mean "the Main Quest changed".

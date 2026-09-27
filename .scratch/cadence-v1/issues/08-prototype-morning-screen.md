@@ -14,4 +14,6 @@ What does opening Cadence in the morning look and feel like, and how is the rest
 - The warning banner when Cadence is opened in a normal Safari tab ([research](../research/ios-storage-durability.md)).
 - How far `DESIGN.md`'s Precision Chronometer carries over. UX and seamlessness beat colour; creative latitude is welcome.
 
+Context: [What a Quest is made of](03-quest-anatomy.md). The morning shows both whole Quests as first-person prose plus two numbered lists, with the Main Quest as headline. The Obstacle is left out when empty.
+
 Deliverable: a rough prototype the owner can open on their iPhone, linked from this ticket.

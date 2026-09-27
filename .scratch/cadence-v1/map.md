@@ -43,6 +43,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 
 - [iOS storage durability & backup mechanics](issues/01-ios-storage-durability.md): Home Screen storage is separate from Safari and exempt from the 7-day cap. Call `persist()` on launch. Deleting the icon likely wipes data. Export via Web Share files, import via file input. Upgrade `idb-keyval` to 6.3 with a named store and retry-once on connection loss.
 - [GitHub Pages + PWA setup for iOS install](issues/02-github-pages-pwa-setup.md): `base: '/cadence/'`. Fix the update path (it never auto-applies today). Upgrade to Vite 8 / vite-plugin-pwa 1.3 / vitest 4.1 on Node 24. Official Actions deploy. 180px opaque touch icon + `viewport-fit=cover`. Namespaced IDB store. Origin is permanent.
+- [What a Quest is made of](issues/03-quest-anatomy.md): six single-line Scaffold parts, with a new optional Obstacle and reworded metrics. Lists hold 1–5 items. Nothing tracked. The morning re-read shows the whole Quest. "Prompts to find it" are thinking aids.
 
 ## Not yet specified
 
@@ -61,3 +62,4 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - **Archive filters:** post-v1.
 - **Rhythm strip:** dropped; it duplicates the ring.
 - **Streaks / stats:** dropped.
+- **Tracking Success Metrics or Commitments** (ticks, habit check-offs, a quarter-end verdict): v1 Quests are text to re-read. A verdict belongs to the rollover flow ([What a Quest is made of](issues/03-quest-anatomy.md)).

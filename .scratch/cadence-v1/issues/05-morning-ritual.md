@@ -13,3 +13,5 @@ What is the morning session for, and what exactly does it record?
 - Per day: how many reflections, can today's be edited later, and what about missed days (shown as gaps? backfilled?)
 - Day boundary for an early-morning session: local date (see [audit.md](../audit.md) bug 4).
 - Name the daily act (Check-in? Morning read? Something else?) and record it in `CONTEXT.md`.
+
+Context: [What a Quest is made of](03-quest-anatomy.md) fixed *what* is re-read: the whole Quest, with the Main Quest as headline, and the Obstacle included when present. The open question is whether that reading or the writing leads.
