@@ -33,22 +33,22 @@ function App() {
         </main>
 
         {view !== 'onboarding' && (
-          <nav className="fixed bottom-0 left-0 right-0 bg-gray-900/90 backdrop-blur-sm border-t border-gray-800 px-6 py-3 flex justify-around items-center text-xs font-mono uppercase tracking-widest">
+          <nav className="fixed bottom-0 left-0 right-0 bg-[#0F1113]/90 backdrop-blur-sm border-t border-[#1E2124] px-6 py-3 flex justify-around items-center text-xs font-mono uppercase tracking-widest">
             <button
               onClick={() => navigate('dashboard')}
-              className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+              className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-[#D4AF37]' : 'text-[#64748B]'}`}
             >
               <span>Home</span>
             </button>
             <button
               onClick={() => navigate('evolution')}
-              className={`flex flex-col items-center gap-1 ${view === 'evolution' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+              className={`flex flex-col items-center gap-1 ${view === 'evolution' ? 'text-[#D4AF37]' : 'text-[#64748B]'}`}
             >
               <span>Evolution</span>
             </button>
             <button
               onClick={() => navigate('archive')}
-              className={`flex flex-col items-center gap-1 ${view === 'archive' ? 'text-[#D4AF37]' : 'text-gray-500'}`}
+              className={`flex flex-col items-center gap-1 ${view === 'archive' ? 'text-[#D4AF37]' : 'text-[#64748B]'}`}
             >
               <span>Archive</span>
             </button>

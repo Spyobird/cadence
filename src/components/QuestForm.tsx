@@ -64,20 +64,20 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
 
     return (
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-[#64748B] mb-2">
           {label}
         </label>
 
         <div className="space-y-2 mb-2">
           {items.map((item, index) => (
             <div key={index} className="flex items-center gap-2">
-              <span className="flex-1 px-3 py-2 bg-gray-100 rounded text-sm text-gray-800">
+              <span className="flex-1 px-3 py-2 bg-[#1E2124] rounded text-sm text-[#C0C4CC]">
                 {item}
               </span>
               <button
                 type="button"
                 onClick={() => handleRemoveItem(field, index)}
-                className="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center"
+                className="flex-shrink-0 w-6 h-6 rounded-full bg-red-900/30 text-red-400 hover:bg-red-900/50 flex items-center justify-center"
                 aria-label={`Remove ${item}`}
               >
                 ×
@@ -93,7 +93,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
             onChange={(e) => onValueChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={addLabel}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-900"
+            className="flex-1 px-3 py-2 border border-[#374151] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-[#C0C4CC]"
           />
           <button
             type="button"
@@ -112,7 +112,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
       <div className="mb-4">
         <label
           htmlFor="mainQuest"
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="block text-sm font-medium text-[#64748B] mb-2"
         >
           Main Quest
         </label>
@@ -122,14 +122,14 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
           value={formData.mainQuest}
           onChange={(e) => handleInputChange('mainQuest', e.target.value)}
           placeholder="What is your main quest for this quarter?"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-900 placeholder-gray-500"
+          className="w-full px-4 py-3 border border-[#374151] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-[#C0C4CC] placeholder-[#64748B]"
         />
       </div>
 
       <div className="mb-4">
         <label
           htmlFor="importance"
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="block text-sm font-medium text-[#64748B] mb-2"
         >
           Importance
         </label>
@@ -139,7 +139,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
           value={formData.importance}
           onChange={(e) => handleInputChange('importance', e.target.value)}
           placeholder="Why is this the most important thing?"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-900 placeholder-gray-500 resize-y"
+          className="w-full px-4 py-3 border border-[#374151] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-[#C0C4CC] placeholder-[#64748B] resize-y"
         />
       </div>
 
@@ -162,7 +162,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
       <div className="mb-6">
         <label
           htmlFor="excitement"
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="block text-sm font-medium text-[#64748B] mb-2"
         >
           Excitement
         </label>
@@ -172,7 +172,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
           value={formData.excitement}
           onChange={(e) => handleInputChange('excitement', e.target.value)}
           placeholder="What makes this exciting?"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-gray-900 placeholder-gray-500 resize-y"
+          className="w-full px-4 py-3 border border-[#374151] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D4AF37] text-[#C0C4CC] placeholder-[#64748B] resize-y"
         />
       </div>
 
@@ -181,7 +181,7 @@ export function QuestForm({ quest, onSubmit, onCancel }: QuestFormProps) {
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition"
+            className="flex-1 px-4 py-3 border border-[#374151] text-[#C0C4CC] rounded-lg font-medium hover:bg-[#374151] transition"
           >
             Cancel
           </button>

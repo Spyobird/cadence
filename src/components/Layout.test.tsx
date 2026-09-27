@@ -23,8 +23,8 @@ describe('Layout', () => {
 
     const layoutDiv = container.firstChild as HTMLElement
     expect(layoutDiv).toHaveClass('min-h-screen')
-    expect(layoutDiv).toHaveClass('bg-gray-50')
-    expect(layoutDiv).toHaveClass('text-gray-900')
+    expect(layoutDiv).toHaveClass('bg-[#0F1113]')
+    expect(layoutDiv).toHaveClass('text-[#C0C4CC]')
     expect(layoutDiv).toHaveClass('pt-safe-top')
     expect(layoutDiv).toHaveClass('pb-safe-bottom')
     expect(layoutDiv).toHaveClass('px-4')

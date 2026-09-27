@@ -116,7 +116,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             disabled={hasSavedToday || (!lifeReflectionText.trim() && !workReflectionText.trim())}
             className={`flex-1 px-4 py-3 rounded-lg font-semibold transition ${
               hasSavedToday || (!lifeReflectionText.trim() && !workReflectionText.trim())
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                ? 'bg-[#1E2124] text-[#64748B] cursor-not-allowed'
                 : 'bg-[#D4AF37] text-[#0F1113] hover:opacity-90'
             }`}
           >

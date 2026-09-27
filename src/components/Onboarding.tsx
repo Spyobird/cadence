@@ -99,16 +99,16 @@ export function Onboarding({ onNavigate }: OnboardingProps) {
   return (
     <div className="flex flex-col items-center w-full max-w-lg mx-auto py-8">
       <div className="mb-6 text-center">
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-[#64748B]">
           Step {step} of 3
         </span>
       </div>
 
-      <h2 className="text-2xl font-bold mb-2 text-gray-900">
+      <h2 className="text-2xl font-bold mb-2 text-[#C0C4CC]">
         {getStepTitle()}
       </h2>
 
-      <p className="text-gray-600 mb-6 text-center">
+      <p className="text-[#64748B] mb-6 text-center">
         {getStepDescription()}
       </p>
 
@@ -141,11 +141,11 @@ export function Onboarding({ onNavigate }: OnboardingProps) {
             </div>
           </div>
 
-          <h3 className="text-xl font-bold mb-2 text-gray-900">
+          <h3 className="text-xl font-bold mb-2 text-[#C0C4CC]">
             All Set!
           </h3>
 
-          <p className="text-gray-600 mb-6">
+          <p className="text-[#64748B] mb-6">
             Your quarterly goals are ready. Let's get to work.
           </p>
 
