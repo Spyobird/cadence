@@ -25,4 +25,9 @@ Context: [What a Quest is made of](03-quest-anatomy.md) fixes the content:
 - setup isn't done until both Quests are finished, and reopening the app resumes it;
 - the same flow serves "Set up Q1 2027" later, starting from a blank Scaffold.
 
+[What a Quest version is](06-quest-versions.md) fixes saving an edit:
+- Save is only possible on a complete Quest; an edit can't turn it back into a draft;
+- an edit-in-progress is a draft, apart from the saved Version that Today shows, until Save or discard;
+- saving again the same Day replaces that Day's Version, so there's no "new version vs fix" choice to offer.
+
 Deliverable: a rough clickable prototype the owner can open on their iPhone (LAN or tunnel), linked from this ticket.

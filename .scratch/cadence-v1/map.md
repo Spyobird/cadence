@@ -18,7 +18,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
   - Hardened data layer that knows about Quarters.
   - Quarter setup.
   - Today screen: the Quests to re-read, with the day's Prompt and optional Reflections.
-  - Quest view/edit, with every save kept as a version, plus a simple history list.
+  - Quest view/edit, with one Version kept per Day, plus a simple History list ([What a Quest version is](issues/06-quest-versions.md)).
   - Quarter-progress ring.
   - Plain Archive feed.
   - Backup export **and** import; import is in so the round trip can be proven on the device.
@@ -46,6 +46,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [What a Quest is made of](issues/03-quest-anatomy.md): six single-line Scaffold parts, with a new optional Obstacle and reworded metrics. Lists hold 1–5 items. Nothing tracked. The morning re-read shows the whole Quest. "Prompts to find it" are thinking aids.
 - [Quarter boundaries](issues/04-quarter-boundaries.md): setup targets the current Quarter, or the upcoming one in the last 14 days, with a one-tap switch. Day N counts from the calendar Quarter's start. A Quarter is set up once both Quests are finished. Reflecting happens only on a Day of a set-up Quarter. Past Quarters are read-only and not browsable in v1. v1 offers plain setup of the next Quarter.
 - [The morning ritual](issues/05-morning-ritual.md): not a ritual. Opening Cadence is a casual re-read of both Quests at any time of day, and it leaves no record. There is an optional Reflection per Quest per Day, editable until midnight, with no backfill. The weekday Prompt is only a thinking aid. All seven Prompts were revised to work at any hour.
+- [What a Quest version is](issues/06-quest-versions.md): the History is a read-only record, with no restore, note or pivot flag. Version 1 is made at finish. After that, at most one Version per Day (same-Day saves replace it), and everything before Day 1 is Version 1. History rows show date, Day and Main Quest. Reflections don't store a Version.
 
 ## Not yet specified
 

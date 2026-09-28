@@ -32,6 +32,14 @@ _Avoid_: Goal, objective
 The fixed first-person sentence openings ("My Life Main Quest is to …") that a Quest is written by completing, so that it reads back as a short vision statement.
 _Avoid_: Template, form
 
+**Version**:
+A Quest as it stood after being saved on a Day. The first is made when the Quest is first finished; drafts are never Versions. A Quest has at most one Version per Day, so saving again that Day replaces it. Before Day 1 there is only one, and later saves replace it.
+_Avoid_: Revision, snapshot, pivot
+
+**History**:
+A Quest's Versions, newest first: a read-only record of how the Quest changed across its Quarter.
+_Avoid_: Evolution Lab, changelog
+
 **Reflection**:
 An optional note about one Quest, written on a Day. There is at most one per Quest per Day, and it can be changed only on its own Day.
 _Avoid_: Check-in, entry, journal

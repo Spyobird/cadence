@@ -18,6 +18,7 @@ What does opening Cadence look and feel like, and how is the rest of the app rea
 Context:
 
 - [What a Quest is made of](03-quest-anatomy.md): Today shows both whole Quests as first-person prose plus two numbered lists, with the Main Quest as headline. The Obstacle is left out when empty.
+- [What a Quest version is](06-quest-versions.md): each Quest's History lists its Versions newest first, current on top. A row shows date, Day and that Version's Main Quest ("12 Nov · Day 43"; "Set up 29 Sep · before Day 1"). Tapping opens the whole Version read-only. No version numbers, no restore. Where the History is reached is this ticket's to decide.
 - [The morning ritual](05-morning-ritual.md): opening Cadence is a casual re-read at any time of day. It is not a ritual or a check-in. Reading leads. The Prompt is a thinking aid, and each Reflection is optional.
 
 Deliverable: a rough prototype the owner can open on their iPhone, linked from this ticket.
