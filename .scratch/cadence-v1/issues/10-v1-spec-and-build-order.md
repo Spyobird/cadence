@@ -13,3 +13,4 @@ With every decision made, what is the v1 spec, and in what order is it built?
 - Test strategy: real IndexedDB (e.g. `fake-indexeddb`) and real typing in place of mocked hooks; `tsc` in CI.
 - On-device acceptance checklist: install, export → import round trip, update on resume, launch appearance.
 - Housekeeping: stale Node 18 notes in `CLAUDE.md`; "check-in" wording in `CLAUDE.md` and spec §3.2, superseded by [The morning ritual](05-morning-ritual.md); "every edit creates a new version" in `CLAUDE.md` and spec §3.3 / "Versioning Logic", superseded by [What a Quest version is](06-quest-versions.md); the unused `public/manifest.json` and `@vitejs/plugin-react-swc`.
+- Writing a Quest: build variant A from [Prototype: writing a Quest](07-prototype-writing-a-quest.md). Its keyboard handling (branch `prototype/writing-a-quest`) is a reference, not code to promote.

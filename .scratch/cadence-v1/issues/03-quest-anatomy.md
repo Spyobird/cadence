@@ -90,3 +90,5 @@ Why these parts: the scaffold was sound: one specific aim, two separate whys (th
 - Obstacle is the only optional part. The writing flow still asks for it; skipping is a deliberate tap; it can be added later by editing.
 - The four "prompts to find it" per domain are shown while writing the Main Quest, as thinking aids only; answers are not saved.
 - A done one-off Commitment is edited out (a new version; the history keeps it). No ticking.
+
+**Superseded (2026-09-28):** the Obstacle hint's "…, and when it does, I'll …" nudge was dropped as too cheesy. The hint is now a question, and Work comes before Life. See [Prototype: writing a Quest](07-prototype-writing-a-quest.md).

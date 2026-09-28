@@ -25,7 +25,7 @@ A date's position within its Quarter: Day 1 on the first day, up to Day 90–92 
 _Avoid_: Cycle day
 
 **Quest**:
-One of the two goals — **Life** or **Work** — committed to for a Quarter, written by completing the Scaffold. Every Quarter has exactly one of each. Its parts, in order: Main Quest, Why it matters, Success Metrics, Why it's exciting, Obstacle, Commitments.
+One of the two goals — **Work** or **Life**, always in that order — committed to for a Quarter, written by completing the Scaffold. Every Quarter has exactly one of each. Its parts, in order: Main Quest, Why it matters, Success Metrics, Why it's exciting, Obstacle, Commitments.
 _Avoid_: Goal, objective
 
 **Scaffold**:

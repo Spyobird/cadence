@@ -47,10 +47,11 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [Quarter boundaries](issues/04-quarter-boundaries.md): setup targets the current Quarter, or the upcoming one in the last 14 days, with a one-tap switch. Day N counts from the calendar Quarter's start. A Quarter is set up once both Quests are finished. Reflecting happens only on a Day of a set-up Quarter. Past Quarters are read-only and not browsable in v1. v1 offers plain setup of the next Quarter.
 - [The morning ritual](issues/05-morning-ritual.md): not a ritual. Opening Cadence is a casual re-read of both Quests at any time of day, and it leaves no record. There is an optional Reflection per Quest per Day, editable until midnight, with no backfill. The weekday Prompt is only a thinking aid. All seven Prompts were revised to work at any hour.
 - [What a Quest version is](issues/06-quest-versions.md): the History is a read-only record, with no restore, note or pivot flag. Version 1 is made at finish. After that, at most one Version per Day (same-Day saves replace it), and everything before Day 1 is Version 1. History rows show date, Day and Main Quest. Reflections don't store a Version.
+- [Prototype: writing a Quest](issues/07-prototype-writing-a-quest.md): variant A for setup and editing: one Scaffold part per screen, then a read-back where you tap a part to change it. Work comes before Life everywhere. Return is Next, the keyboard stays up, and drafts survive the app closing. The Obstacle hint is now a question.
 
 ## Not yet specified
 
-- **Visual system detail:** typography (self-hosted fonts for offline), colour tuning (Steel-Gray contrast), and how much motion earns its place. Graduates once the two prototypes set the visual language.
+- **Visual system detail:** typography (self-hosted fonts for offline), colour tuning (Steel-Gray contrast), and how much motion earns its place. The writing prototype proposes grey system sans for the Scaffold, the system serif for the owner's words, and gold only for the caret and the primary action; not yet confirmed. Graduates once the Today prototype sets the rest of the visual language.
 - **On-device verification:** launch appearance without splash images, whether an update applies on resume, and status-bar behaviour on iOS 26. Can't be pinned down until something is deployed at the real origin; may graduate into build tickets.
 
 ## Out of scope

@@ -20,5 +20,6 @@ Context:
 - [What a Quest is made of](03-quest-anatomy.md): Today shows both whole Quests as first-person prose plus two numbered lists, with the Main Quest as headline. The Obstacle is left out when empty.
 - [What a Quest version is](06-quest-versions.md): each Quest's History lists its Versions newest first, current on top. A row shows date, Day and that Version's Main Quest ("12 Nov · Day 43"; "Set up 29 Sep · before Day 1"). Tapping opens the whole Version read-only. No version numbers, no restore. Where the History is reached is this ticket's to decide.
 - [The morning ritual](05-morning-ritual.md): opening Cadence is a casual re-read at any time of day. It is not a ritual or a check-in. Reading leads. The Prompt is a thinking aid, and each Reflection is optional.
+- [Prototype: writing a Quest](07-prototype-writing-a-quest.md): Work is listed before Life everywhere. Editing starts from a Quest's read-back (Cancel / Save; tap a part to change it on its own screen), so the Quests screen needs a way into Edit. The proposed look: the Scaffold's words in grey system sans, the owner's words in the system serif, gold only for the caret and the primary action.
 
 Deliverable: a rough prototype the owner can open on their iPhone, linked from this ticket.
