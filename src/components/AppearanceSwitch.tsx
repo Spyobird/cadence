@@ -23,7 +23,7 @@ export function AppearanceSwitch() {
         {CHOICES.map(({ value, label }) => (
           <label
             key={value}
-            className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-full text-m text-given has-checked:bg-surface has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-gold"
+            className="flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-full text-m text-given has-checked:bg-surface has-checked:text-ink has-focus-visible:outline-2 has-focus-visible:outline-ink"
           >
             <input
               type="radio"

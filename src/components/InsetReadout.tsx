@@ -18,14 +18,14 @@ export function InsetReadout() {
   }, [])
 
   return (
-    <dl className="grid grid-cols-[1fr_auto] gap-x-4 text-s text-faint tabular-nums">
+    <dl className="grid grid-cols-[1fr_auto] gap-x-4 text-s text-given tabular-nums">
       <div ref={probe} aria-hidden className="pt-safe absolute" />
       <dt>env(safe-area-inset-top)</dt>
-      <dd className="text-ink">{readings.insetTop}</dd>
+      <dd>{readings.insetTop}</dd>
       <dt>innerHeight</dt>
-      <dd className="text-ink">{readings.innerHeight}px</dd>
+      <dd>{readings.innerHeight}px</dd>
       <dt>screen.height</dt>
-      <dd className="text-ink">{readings.screenHeight}px</dd>
+      <dd>{readings.screenHeight}px</dd>
     </dl>
   )
 }

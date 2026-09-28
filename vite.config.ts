@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { buildStamp } from './scripts/build-stamp.ts'
+import { VOID } from './src/lib/appearance.ts'
 
 export default defineConfig({
   // Cadence lives at https://spyobird.github.io/cadence/ for good (ADR 0001)
@@ -31,8 +32,8 @@ export default defineConfig({
         scope: '/cadence/',
         display: 'standalone',
         // The manifest holds one colour; the head carries both looks
-        theme_color: '#0F1113',
-        background_color: '#0F1113',
+        theme_color: VOID.dark,
+        background_color: VOID.dark,
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

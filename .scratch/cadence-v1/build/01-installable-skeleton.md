@@ -54,7 +54,7 @@ Cadence installs from `https://spyobird.github.io/cadence/` on the iPhone. It ru
 ## Build notes
 
 - **Icon:** the owner chose draft A, the Quarter in progress ([DESIGN.md](../../../DESIGN.md#icon)).
-- **Update reload:** a new version reloads the page as soon as it's visible and nothing is being written. On a resume that finds an update, that's a moment after reopening, so check step 9 needs one reopen.
+- **Update reload:** as the spec says, a new build waits and reloads the next time the page is shown with nothing being written; it never reloads while Cadence is on screen. So check step 9 takes two reopens: the first finds the update, the second shows it.
 - **Placeholder extras:** besides the two temporary pieces, a list of 40 rows gives check step 6 a long page to scroll. It goes with them in slice 4.
 
 ## Phone check
@@ -71,5 +71,5 @@ iOS version:
 | 6 | Scroll the rows: nothing blurs at the top, nothing under the strip | |
 | 7 | `100dvh` fills with no bottom gap; build stamp clears the home indicator. Readout: inset top / innerHeight / screen.height | |
 | 8 | Launch without splash images, light and dark: what shows before first paint? **Decides whether splash images are needed.** | |
-| 9 | Push a trivial change, wait for the deploy, reopen from the app switcher: build stamp changes | |
+| 9 | Push a trivial change, wait for the deploy, reopen from the app switcher (finds the update), then leave and reopen again: build stamp changes | |
 | 10 | Safari tab shows the red banner; Home Screen doesn't | |
