@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quest proto">
+<title>Prototype: writing a Quest</title>
+<!--
+  PROTOTYPE, throwaway. Answers "How should writing and editing a Quest feel on an iPhone?"
+  (.scratch/cadence-v1/issues/07-prototype-writing-a-quest.md)
+
+  Three variants on one page, switchable with ?variant=A|B|C, each in two modes, ?mode=setup|edit:
+    A  One part at a time: one Scaffold sentence per screen, Life then Work, then a read-back.
+    B  One page: the whole Quest as one page of prose, with blanks to fill in.
+    C  Parts list: the six parts as a list; tap one to write it in a sheet, in any order.
+
+  The draft lives in localStorage under "PROTOTYPE-wipe-me:cadence-writing-a-quest".
+  Run: python3 -m http.server 8123 --directory .scratch/cadence-v1/prototypes
+  Open: http://<mac LAN ip>:8123/writing-a-quest.html on the iPhone.
+-->
+<style>
+:root {
+  --void: #0F1113;
+  --surface: #171A1E;
+  --raise: #22262B;
+  --line: #2C3137;
+  --ink: #EEE9DF;
+  --given: #A4ABB6;
+  --faint: #838B98;
+  --gold: #D4AF37;
+  --gold-dim: #6E5E2A;
+  --on-gold: #17140A;
+  --danger: #FF7A66;
+  --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", sans-serif;
+  --kb: 0px;
+  --gutter: 20px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--void); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--void); color: var(--ink);
+  font: 17px/1.5 var(--sans); -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+#kb-proxy { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px; border: 0; padding: 0; pointer-events: none; }
+
+.app {
+  max-width: 640px; margin: 0 auto;
+  padding: 8px max(var(--gutter), env(safe-area-inset-right)) calc(128px + var(--kb) + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left));
+}
+
+/* The one idea: the Scaffold's words are set quiet and sans; the owner's words are set in serif ink. */
+.given { font-family: var(--sans); color: var(--given); }
+.mine { font-family: var(--serif); color: var(--ink); }
+
+.field {
+  display: block; width: 100%; margin: 0; padding: 4px 0; border: 0; border-radius: 0; outline: none;
+  resize: none; overflow: hidden; background: transparent; -webkit-appearance: none;
+  color: var(--ink); caret-color: var(--gold); font: 20px/1.45 var(--serif);
+}
+.field::placeholder { color: var(--faint); font-style: italic; opacity: 1; }
+.hint { color: var(--faint); font-size: 15px; line-height: 1.45; margin: 14px 0 0; }
+.note { color: var(--given); font-size: 15px; margin: 10px 0 0; }
+.link { color: var(--gold); font-size: 15px; min-height: 44px; }
+.lede { color: var(--faint); font-size: 15px; margin: 14px 0 0; }
+.proto-note { color: var(--faint); font-size: 13px; border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 32px; }
+
+/* Quarter line at the top of setup */
+.qline { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
+.qname { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Bottom bar that rides above the keyboard */
+.bar {
+  position: fixed; left: 0; right: 0; bottom: var(--kb); z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px max(var(--gutter), env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left));
+  background: linear-gradient(to top, var(--void) 70%, rgba(15, 17, 19, 0));
+}
+.kb-open .bar { padding-bottom: 8px; }
+.bar .grow { flex: 1; }
+.primary { background: var(--gold); color: var(--on-gold); font-weight: 600; border-radius: 12px; min-height: 48px; padding: 0 22px; }
+.primary:disabled { background: var(--raise); color: var(--faint); }
+.ghost { color: var(--ink); min-height: 48px; padding: 0 6px; }
+.ghost:disabled { color: var(--faint); }
+.pill { background: var(--raise); color: var(--ink); border-radius: 999px; padding: 0 18px; min-height: 40px; font-weight: 600; }
+.wide { width: 100%; margin-top: 12px; }
+
+/* Lists */
+.list ol { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 30px 1fr; align-items: start; border-bottom: 1px solid var(--line); }
+.row.focused { border-bottom-color: var(--gold-dim); }
+.num { font: 20px/1.45 var(--serif); color: var(--faint); padding: 4px 0; font-variant-numeric: tabular-nums; }
+.row-tools { grid-column: 2; display: flex; gap: 6px; padding: 2px 0 10px; }
+.row-tools button { font-size: 14px; color: var(--given); background: var(--raise); border-radius: 999px; padding: 0 12px; height: 32px; }
+.row-tools button:disabled { color: var(--line); }
+.add { color: var(--gold); min-height: 44px; font-size: 16px; padding: 6px 0 0 30px; }
+.cap { color: var(--faint); font-size: 14px; margin: 10px 0 0 30px; }
+
+.prompts ul { margin: 4px 0 0; padding: 0; list-style: none; border-left: 2px solid var(--line); }
+.prompts li { color: var(--given); font: italic 17px/1.45 var(--serif); padding: 6px 0 6px 14px; }
+
+/* Read-back */
+.rb-part { display: block; width: 100%; text-align: left; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 18px; line-height: 1.55; }
+.rb-part[role=button] { cursor: pointer; }
+.rb-part .mine { font-size: 19px; }
+.rb-main .given, .rb-main .mine { font-size: 23px; line-height: 1.4; }
+.rb-list { margin: 6px 0 0; padding-left: 1.6em; }
+.rb-list li { padding: 2px 0; color: var(--faint); font-family: var(--serif); }
+.rb-empty { color: var(--faint); font-style: italic; }
+.rb-part.changed, .b-part.changed { border-left: 3px solid var(--gold); padding-left: 12px; }
+
+/* Edit bar (Cancel / Save) */
+.editbar {
+  position: sticky; top: 0; z-index: 15;
+  display: grid; grid-template-columns: 5.5em 1fr 5.5em; align-items: center;
+  margin: 0 calc(-1 * var(--gutter)); padding: 4px var(--gutter);
+  background: rgba(15, 17, 19, .92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.navbtn { min-height: 44px; font-size: 17px; color: var(--ink); justify-self: start; }
+.navbtn.strong { color: var(--gold); font-weight: 600; justify-self: end; }
+.navbtn:disabled { color: var(--faint); }
+.editbar-mid { display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+.editbar-title { font-weight: 600; font-size: 16px; }
+.editbar-note { font-size: 13px; color: var(--faint); }
+
+/* A: one part at a time */
+.ticks { display: flex; gap: 3px; margin: 18px 0 8px; }
+.ticks i { flex: 1; height: 3px; border-radius: 2px; background: var(--line); }
+.ticks i.t-done { background: var(--gold-dim); }
+.ticks i.t-now { background: var(--gold); }
+.ticks i.gap { flex: 0 0 10px; background: none; }
+.a-where { font-size: 14px; color: var(--faint); margin: 0; }
+.a-step { padding-top: 22px; }
+.a-open { font: 400 23px/1.35 var(--sans); color: var(--given); letter-spacing: -0.01em; margin: 0 0 10px; }
+.a-step .field, .sheet-body .field, .a-step .num, .sheet-body .num { font-size: 23px; line-height: 1.4; }
+.a-title { font: 600 28px/1.15 var(--sans); letter-spacing: -0.02em; margin: 22px 0 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .a-step { animation: stepIn .22s ease-out; }
+  .sheet { animation: sheetIn .24s cubic-bezier(.2, .8, .2, 1); }
+}
+@keyframes stepIn { from { opacity: 0; transform: translateX(14px); } }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(28px); } }
+
+/* B: one page */
+.b-nav {
+  position: sticky; top: 0; z-index: 10; display: flex; gap: 22px;
+  margin: 0 calc(-1 * var(--gutter)); padding: 8px var(--gutter);
+  background: rgba(15, 17, 19, .92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.b-navbtn { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; min-height: 32px; }
+.dots { display: inline-flex; gap: 3px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--gold); }
+.b-sec { padding-top: 28px; }
+.b-h { font: 600 30px/1.1 var(--sans); letter-spacing: -0.02em; margin: 0 0 4px; }
+.b-part { padding: 12px 0; }
+.b-para { margin: 0; font-size: 19px; line-height: 1.6; }
+.blank {
+  font: 20px/1.6 var(--serif); color: var(--ink); caret-color: var(--gold); outline: none;
+  border-radius: 3px; padding: 0 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.blank:empty::before { content: attr(data-ph); color: var(--faint); font-style: italic; border-bottom: 1px dashed var(--faint); }
+.blank:focus { background: rgba(212, 175, 55, .10); }
+.b-list { margin-top: 4px; }
+.b-list .row { border-bottom: 0; }
+.b-list .field, .b-list .num { font-size: 19px; line-height: 1.5; }
+.b-hint { color: var(--faint); font-size: 15px; margin: 6px 0 0; }
+.chip { margin-top: 8px; font-size: 15px; color: var(--given); border: 1px solid var(--line); border-radius: 999px; padding: 0 14px; min-height: 36px; }
+.b-part.skipped .given { text-decoration: line-through; text-decoration-color: var(--faint); }
+
+/* C: parts list */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin: 16px 0 6px; background: var(--surface); border-radius: 12px; }
+.seg button { min-height: 44px; border-radius: 9px; font-weight: 600; font-size: 16px; color: var(--given); }
+.seg button.on { background: var(--raise); color: var(--ink); }
+.seg-n { font-weight: 400; font-size: 13px; color: var(--faint); margin-left: 4px; }
+.c-list { list-style: none; margin: 0; padding: 0; }
+.c-row { display: block; width: 100%; text-align: left; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.c-top { display: flex; align-items: baseline; gap: 8px; }
+.c-name { font-weight: 600; font-size: 17px; }
+.c-tag { font-size: 13px; color: var(--faint); }
+.c-tag.changed { color: var(--gold); }
+.c-mark { margin-left: auto; color: var(--gold); min-width: 1em; text-align: right; }
+.c-peek {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  margin-top: 4px; font: 17px/1.45 var(--serif); color: var(--given);
+}
+.c-peek.empty { font-family: var(--sans); font-size: 15px; color: var(--faint); }
+.c-more { font-family: var(--sans); font-size: 14px; color: var(--faint); }
+.sheet {
+  position: fixed; inset: 0; z-index: 30; overflow-y: auto; background: var(--void);
+  padding: env(safe-area-inset-top) max(var(--gutter), env(safe-area-inset-right)) calc(128px + var(--kb)) max(var(--gutter), env(safe-area-inset-left));
+}
+.sheet .bar { z-index: 40; }
+.sheet-head {
+  position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 5.5em 1fr 5.5em; align-items: center;
+  background: var(--void); border-bottom: 1px solid var(--line);
+}
+.sheet-title { font-weight: 600; text-align: center; }
+.sheet-body { padding-top: 22px; }
+
+/* Done and read-only stand-ins */
+.done { padding-top: 40px; }
+.done-h, .rv-title { font: 600 30px/1.15 var(--sans); letter-spacing: -0.02em; margin: 0; }
+.done-sub { color: var(--given); margin: 8px 0 28px; }
+.done-q { padding: 16px 0; border-top: 1px solid var(--line); }
+.done-d { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--faint); }
+.done-main { margin: 0; font-size: 22px; line-height: 1.4; }
+.rv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-top: 20px; }
+.rv-sub { margin: 6px 0 0; color: var(--faint); font-size: 15px; }
+
+/* Overlays */
+.toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 56px); transform: translateX(-50%); z-index: 60;
+  max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; text-align: center;
+  background: var(--ink); color: var(--void); font-size: 15px; font-weight: 500; box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+}
+.scrim { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; padding: 0 10px calc(10px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .55); }
+.action-sheet { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border-radius: 16px; overflow: hidden; }
+.as-title { margin: 0; padding: 16px 20px; text-align: center; font-size: 14px; color: var(--given); border-bottom: 1px solid var(--line); }
+.as-btn { display: block; width: 100%; min-height: 56px; font-size: 18px; border-bottom: 1px solid var(--line); }
+.as-btn:last-child { border-bottom: 0; }
+.as-btn.danger { color: var(--danger); }
+
+/* Prototype chrome: deliberately not part of the design */
+.proto { position: relative; z-index: 25; background: #fff; color: #000; font: 14px/1.4 var(--sans); padding-top: env(safe-area-inset-top); border-bottom: 2px dashed #000; }
+.proto-row { display: flex; align-items: center; justify-content: center; min-height: 42px; }
+.proto-arrow { width: 44px; height: 42px; font-size: 24px; }
+.proto-label { min-height: 42px; padding: 0 8px; }
+.proto-mode { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #000; color: #fff; font-size: 12px; }
+.proto-panel { padding: 2px 16px 14px; }
+.proto-panel p { margin: 8px 0; color: #333; }
+.proto-seg, .proto-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.proto-seg button, .proto-actions button { border: 1px solid #000; border-radius: 8px; padding: 6px 10px; min-height: 40px; }
+.proto-seg button[aria-pressed=true] { background: #000; color: #fff; }
+.proto-panel summary { margin-top: 10px; cursor: pointer; }
+.proto-panel pre { max-height: 40vh; overflow: auto; margin: 6px 0 0; padding: 8px; background: #f2f2f2; font-size: 11px; white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+<input id="kb-proxy" type="text" aria-hidden="true" tabindex="-1" autocomplete="off">
+<div id="root"></div>
+<script type="module">
+import { html, render, useState, useEffect, useLayoutEffect, useRef } from 'https://cdn.jsdelivr.net/npm/htm@3/preact/standalone.module.js';
+
+// ---------------------------------------------------------------- content
+
+const STORE = 'PROTOTYPE-wipe-me:cadence-writing-a-quest';
+const VARIANTS = { A: 'One part at a time', B: 'One page', C: 'Parts list' };
+const VKEYS = Object.keys(VARIANTS);
+const CAP = 5;
+const DOMAINS = ['work', 'life']; // Work first, everywhere
+const [FIRST, SECOND] = DOMAINS;
+const DNAME = { life: 'Life', work: 'Work' };
+
+// Setup pretends today is 28 Sep 2026: fewer than 14 days of Q3 are left, so the default target is Q4.
+const QUARTERS = {
+  '2026-Q3': { label: 'Q3 2026', range: '1 Jul – 30 Sep', endLong: '30 September 2026', other: '2026-Q4', status: 'It’s already running: today is Day 90 of 92.' },
+  '2026-Q4': { label: 'Q4 2026', range: '1 Oct – 31 Dec', endLong: '31 December 2026', other: '2026-Q3', status: 'It starts on 1 October, in 3 days.' },
+};
+const DEFAULT_Q = '2026-Q4';
+const EDIT_Q = QUARTERS['2026-Q4']; // Edit pretends today is 12 Nov 2026, Day 43.
+
+const PARTS = [
+  { key: 'main', name: 'Main Quest', kind: 'text', open: d => `My ${DNAME[d]} Main Quest is to`,
+    ph: 'your one aim', hint: 'One specific aim. On {end} you’ll know whether you did it.' },
+  { key: 'matters', name: 'Why it matters', kind: 'text', open: () => 'This is the single most important thing for me to accomplish this quarter because completing it would',
+    ph: 'what it would change', hint: 'The reason: what finishing it would change for you.' },
+  { key: 'metrics', name: 'Success Metrics', kind: 'list', open: (d, q) => `By ${q.endLong}, I’ll have:`,
+    ph: 'a result you can check', hint: 'Results you could check on {end}. Outcomes, not actions. Up to five.' },
+  { key: 'exciting', name: 'Why it’s exciting', kind: 'text', open: () => 'This feels really exciting and compelling for me because',
+    ph: 'what pulls you toward it', hint: 'The pull, not the reason: why you’ll want to do it.' },
+  { key: 'obstacle', name: 'Obstacle', kind: 'text', optional: true, open: () => 'What’s most likely to get in my way is',
+    ph: 'what could stop you', hint: 'What’s the one thing most likely to stop you, and what will you do about it? Optional.' },
+  { key: 'commitments', name: 'Commitments', kind: 'list', open: () => 'To make sure I complete the Quest, I’m going to:',
+    ph: 'a habit or action, with a when', hint: 'A habit with a when (“every Monday 9–11am, deep work”) or an action with a by-when (“book the race by 15 Oct”). Up to five.' },
+];
+
+const PROMPTS = {
+  work: [
+    'What’s the one thing that, if accomplished, would move the needle the most?',
+    'Fast-forward to {end}: what one accomplishment would make you proudest?',
+    'What’s the one thing that would make everything else easier or unnecessary?',
+    'What have you been postponing that you know would be transformative?',
+  ],
+  life: [
+    'What’s the one thing that would bring the most joy, fulfilment, or peace to your personal life?',
+    'Fast-forward to {end}: what one accomplishment would make you feel proudest?',
+    'What’s the one change that would positively impact every other area of your life?',
+    'What have you been avoiding that would transform your relationships or happiness?',
+  ],
+};
+
+// ---------------------------------------------------------------- model
+
+let seq = 0;
+const nid = () => Date.now().toString(36) + (seq++).toString(36);
+const rows = (...texts) => texts.map(text => ({ id: nid(), text }));
+const blankQuest = () => ({ main: '', matters: '', metrics: rows(''), exciting: '', obstacle: '', obstacleSkipped: false, commitments: rows('') });
+const sampleLife = () => ({
+  main: 'run 5K in under 25 minutes at the December parkrun',
+  matters: 'prove I can keep a promise to my own body through the busiest quarter at work',
+  metrics: rows('run an official parkrun 5K in under 25:00', 'logged at least 36 runs since 1 October', 'slept 7 hours on most weeknights, by my watch'),
+  exciting: 'I’ve never thought of myself as a runner, and a fast finish would make me one',
+  obstacle: 'late client calls that eat my evenings, and when they do, I’ll run at 6:30 the next morning',
+  obstacleSkipped: false,
+  commitments: rows('Run every Tuesday, Thursday and Saturday at 6:30am', 'Sign up for the 13 December parkrun by 15 October', 'Phone out of the bedroom by 10:30pm on weeknights'),
+});
+const freshSetup = () => ({ q: DEFAULT_Q, life: blankQuest(), work: blankQuest(), finished: { life: false, work: false }, done: false,
+  a: { d: FIRST, step: 0, ret: false }, c: { tab: FIRST, open: null } });
+const freshEdit = () => ({ saved: sampleLife(), draft: null, startedAt: null, a: { view: 'review', step: 0 }, c: { open: null } });
+const freshState = () => ({ v: 2, variant: 'A', mode: 'setup', setup: freshSetup(), edit: freshEdit() });
+
+const oneLine = v => v.replace(/\s*[\r\n]+\s*/g, ' ');
+const fill = (s, q) => s.split('{end}').join(q.endLong);
+const endPunct = t => (/[.!?…”"')]$/.test(t.trim()) ? '' : '.');
+const partValue = (quest, p) => (p.kind === 'list' ? quest[p.key].map(i => i.text.trim()).filter(Boolean) : quest[p.key].trim());
+function partDone(quest, p, edit = false) {
+  if (p.kind === 'list') return partValue(quest, p).length > 0;
+  if (p.key === 'obstacle') return edit || !!quest.obstacle.trim() || quest.obstacleSkipped;
+  return !!quest[p.key].trim();
+}
+const missing = (quest, edit) => PARTS.filter(p => !partDone(quest, p, edit));
+const partChanged = (a, b, p) => JSON.stringify(partValue(a, p)) !== JSON.stringify(partValue(b, p));
+const sameQuest = (a, b) => PARTS.every(p => !partChanged(a, b, p));
+const hasAnything = quest => PARTS.some(p => partValue(quest, p).length > 0);
+const tidy = quest => {
+  const t = { ...quest };
+  PARTS.forEach(p => { t[p.key] = p.kind === 'list' ? quest[p.key].filter(i => i.text.trim()).map(i => ({ ...i, text: i.text.trim() })) : quest[p.key].trim(); });
+  return t;
+};
+const withRows = quest => ({ ...quest, metrics: quest.metrics.length ? quest.metrics : rows(''), commitments: quest.commitments.length ? quest.commitments : rows('') });
+const entryId = (prefix, quest, p) => (p.kind === 'list' ? `${prefix}-${p.key}-${quest[p.key][quest[p.key].length - 1].id}` : `${prefix}-${p.key}`);
+
+const binder = (upd, pick) => ({
+  set: (k, v) => upd(s => { const t = pick(s); t[k] = v; if (k === 'obstacle' && v.trim()) t.obstacleSkipped = false; return s; }),
+  setItems: (k, v) => upd(s => { pick(s)[k] = v; return s; }),
+  skip: () => upd(s => { const t = pick(s); t.obstacle = ''; t.obstacleSkipped = true; return s; }),
+});
+const startEdit = upd => upd(s => {
+  s.edit.draft = withRows(structuredClone(s.edit.saved));
+  s.edit.startedAt = Date.now();
+  s.edit.a = { view: 'review', step: 0 };
+  s.edit.c = { open: null };
+  return s;
+});
+
+function load() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(STORE)); } catch (e) { /* private mode */ }
+  if (!s || s.v !== 2) s = freshState();
+  const u = new URLSearchParams(location.search);
+  if (VARIANTS[u.get('variant')]) s.variant = u.get('variant');
+  if (['setup', 'edit'].includes(u.get('mode'))) s.mode = u.get('mode');
+  return s;
+}
+const fmtTime = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+function resumeNote(s) {
+  if (s.mode === 'edit' && s.edit.draft) return `Your unsaved changes from ${fmtTime(s.edit.startedAt)} are still here.`;
+  if (s.mode === 'setup' && !s.setup.done && (hasAnything(s.setup.life) || hasAnything(s.setup.work))) return 'Picked up where you left off.';
+  return null;
+}
+
+// ---------------------------------------------------------------- keyboard
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isEditable = el => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable);
+const keep = e => e.preventDefault(); // on pointer/mouse down: tapping the button doesn't steal focus, so the keyboard stays
+// iOS only raises the keyboard for focus() inside a tap or keypress handler. Parking focus on a hidden
+// input during the handler keeps the keyboard up while the next field renders; focusSoon then moves it.
+const holdKeyboard = () => document.getElementById('kb-proxy').focus({ preventScroll: true });
+const dropKeyboard = () => { const a = document.activeElement; if (a && a.blur) a.blur(); };
+function placeCaretEnd(el) {
+  if (el.setSelectionRange) { const n = el.value.length; el.setSelectionRange(n, n); return; }
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+function focusNow(id) {
+  const el = document.getElementById(id);
+  if (!el) return focusSoon(id);
+  el.focus({ preventScroll: true });
+  placeCaretEnd(el);
+  el.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+const focusSoon = id => setTimeout(() => { if (document.getElementById(id)) focusNow(id); }, 40);
+
+function useKeyboardInset() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const f = () => {
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty('--kb', kb + 'px');
+      root.classList.toggle('kb-open', kb > 60);
+    };
+    vv.addEventListener('resize', f); vv.addEventListener('scroll', f); f();
+    return () => { vv.removeEventListener('resize', f); vv.removeEventListener('scroll', f); };
+  }, []);
+}
+
+// ---------------------------------------------------------------- shared pieces
+
+function AutoText({ id, value, onInput, onEnter, onBackEmpty, onFocus, onBlur, ph, label, caps = 'none' }) {
+  const ref = useRef();
+  useLayoutEffect(() => { const el = ref.current; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }, [value]);
+  return html`<textarea id=${id} ref=${ref} class="field" rows="1" value=${value} placeholder=${ph} aria-label=${label || ph}
+    enterkeyhint="next" autocapitalize=${caps} autocomplete="off" spellcheck="true" onFocus=${onFocus} onBlur=${onBlur}
+    onKeyDown=${e => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); onEnter && onEnter(); }
+      else if (e.key === 'Backspace' && !e.currentTarget.value && onBackEmpty) { e.preventDefault(); onBackEmpty(); }
+    }}
+    onInput=${e => onInput(e.currentTarget.value)}></textarea>`;
+}
+
+// Return adds the next item; Return on an empty item leaves the list; Backspace on an empty item removes it.
+function ListEditor({ items, setItems, pre, ph, onExit, cls = '' }) {
+  const [focused, setFocused] = useState(null);
+  const update = (next, focusId) => { holdKeyboard(); setItems(next); focusSoon(pre + focusId); };
+  const onInput = (i, v) => {
+    if (/[\r\n]/.test(v)) { // pasted or dictated lines become separate items
+      const lines = v.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+      const next = [...items];
+      next[i] = { ...next[i], text: lines[0] || '' };
+      next.splice(i + 1, 0, ...lines.slice(1).map(text => ({ id: nid(), text })));
+      const capped = next.slice(0, CAP);
+      return update(capped, capped[Math.min(i + Math.max(lines.length, 1) - 1, capped.length - 1)].id);
+    }
+    setItems(items.map((it, j) => (j === i ? { ...it, text: v } : it)));
+  };
+  const enter = i => {
+    if (!items[i].text.trim()) {
+      if (items.length > 1) setItems(items.filter((_, j) => j !== i));
+      return onExit && onExit();
+    }
+    if (items.length >= CAP) return onExit && onExit();
+    const n = { id: nid(), text: '' };
+    const next = [...items]; next.splice(i + 1, 0, n);
+    update(next, n.id);
+  };
+  const backEmpty = i => { if (i > 0) update(items.filter((_, j) => j !== i), items[i - 1].id); };
+  const move = (i, dir) => {
+    const j = i + dir;
+    const next = [...items]; [next[i], next[j]] = [next[j], next[i]];
+    update(next, items[i].id);
+  };
+  const remove = i => {
+    if (items.length === 1) return update([{ ...items[0], text: '' }], items[0].id);
+    const next = items.filter((_, j) => j !== i);
+    update(next, next[Math.max(0, i - 1)].id);
+  };
+  const add = () => { const n = { id: nid(), text: '' }; update([...items, n], n.id); };
+  const last = items[items.length - 1];
+  return html`<div class=${'list ' + cls}>
+    <ol>${items.map((it, i) => html`<li key=${it.id} class=${focused === it.id ? 'row focused' : 'row'}>
+      <span class="num" aria-hidden="true">${i + 1}.</span>
+      <${AutoText} id=${pre + it.id} value=${it.text} ph=${ph} label=${`Item ${i + 1}`} caps="sentences"
+        onInput=${v => onInput(i, v)} onEnter=${() => enter(i)} onBackEmpty=${() => backEmpty(i)}
+        onFocus=${() => setFocused(it.id)} onBlur=${() => setFocused(f => (f === it.id ? null : f))} />
+      ${focused === it.id && html`<span class="row-tools">
+        <button type="button" onPointerDown=${keep} onMouseDown=${keep} onClick=${() => move(i, -1)} disabled=${i === 0}>Move up</button>
+        <button type="button" onPointerDown=${keep} onMouseDown=${keep} onClick=${() => move(i, 1)} disabled=${i === items.length - 1}>Move down</button>
+        <button type="button" onPointerDown=${keep} onMouseDown=${keep} onClick=${() => remove(i)}>Remove</button>
+      </span>`}
+    </li>`)}</ol>
+    ${items.length >= CAP
+      ? html`<p class="cap">That’s five, the most a list holds.</p>`
+      : last.text.trim() && html`<button type="button" class="add" onPointerDown=${keep} onMouseDown=${keep} onClick=${add}>Add another</button>`}
+  </div>`;
+}
+
+function PartField({ p, quest, b, prefix, onDone, cls }) {
+  if (p.kind === 'list') {
+    return html`<${ListEditor} items=${quest[p.key]} setItems=${v => b.setItems(p.key, v)} pre=${`${prefix}-${p.key}-`} ph=${p.ph} onExit=${onDone} cls=${cls} />`;
+  }
+  return html`<${AutoText} id=${`${prefix}-${p.key}`} value=${quest[p.key]} ph=${p.ph} label=${p.name}
+    onInput=${v => b.set(p.key, oneLine(v))} onEnter=${onDone} />`;
+}
+
+function Prompts({ d, q }) {
+  const [open, setOpen] = useState(false);
+  return html`<div class="prompts">
+    <button type="button" class="link" aria-expanded=${open} onPointerDown=${keep} onMouseDown=${keep} onClick=${() => setOpen(!open)}>
+      ${open ? 'Hide the questions' : 'Stuck? Four questions to help find it'}</button>
+    ${open && html`<ul>${PROMPTS[d].map(t => html`<li>${fill(t, q)}</li>`)}</ul>`}
+  </div>`;
+}
+
+function QuarterLine({ st, upd }) {
+  const q = QUARTERS[st.setup.q];
+  return html`<div class="qline">
+    <span class="qname">${q.label} · ${q.range}</span>
+    <button type="button" class="link" onPointerDown=${keep} onMouseDown=${keep}
+      onClick=${() => upd(s => { s.setup.q = q.other; return s; })}>Switch to ${QUARTERS[q.other].label}</button>
+  </div>`;
+}
+
+const Bar = ({ children }) => html`<div class="bar">${children}</div>`;
+const Dots = ({ quest, edit }) => html`<span class="dots" aria-label=${`${6 - missing(quest, edit).length} of 6 written`}>
+  ${PARTS.map(p => html`<i class=${partDone(quest, p, edit) ? 'on' : ''}></i>`)}</span>`;
+
+function ReadBack({ quest, d, q, onPart, base }) {
+  return html`<div class="rb">${PARTS.map((p, i) => {
+    const v = partValue(quest, p);
+    const empty = !v.length;
+    if (empty && !onPart) return null;
+    let body;
+    if (p.kind === 'list') body = html`<ol class="rb-list">${v.map(t => html`<li><span class="mine">${t}</span></li>`)}</ol>`;
+    else if (empty) body = html` <span class="rb-empty">${p.optional ? '… nothing yet. Tap to add one.' : '… not written yet.'}</span>`;
+    else body = html` <span class="mine">${v}${endPunct(v)}</span>`;
+    const cls = `rb-part rb-${p.key}` + (base && partChanged(quest, base, p) ? ' changed' : '');
+    const inner = html`<span class="given">${p.open(d, q)}</span>${body}`;
+    return onPart
+      ? html`<div role="button" tabindex="0" class=${cls} onClick=${() => onPart(i)} onKeyDown=${e => e.key === 'Enter' && onPart(i)}>${inner}</div>`
+      : html`<div class=${cls}>${inner}</div>`;
+  })}</div>`;
+}
+
+function EditBar({ st, upd, say, ask }) {
+  const E = st.edit;
+  const changed = !sameQuest(E.draft, E.saved);
+  const miss = missing(E.draft, true);
+  const canSave = changed && !miss.length;
+  const note = !changed ? 'No changes yet' : miss.length ? `${miss[0].name} can’t be empty` : 'Unsaved changes';
+  const save = () => { dropKeyboard(); upd(s => { s.edit.saved = tidy(s.edit.draft); s.edit.draft = null; s.edit.startedAt = null; return s; }); say('Saved'); };
+  const discard = () => { dropKeyboard(); upd(s => { s.edit.draft = null; s.edit.startedAt = null; return s; }); };
+  const cancel = () => (changed ? ask({ title: 'Discard your changes to the Life Quest?', yes: 'Discard changes', no: 'Keep editing', onYes: discard }) : discard());
+  return html`<header class="editbar">
+    <button type="button" class="navbtn" onPointerDown=${keep} onMouseDown=${keep} onClick=${cancel}>Cancel</button>
+    <div class="editbar-mid"><span class="editbar-title">Life Quest</span><span class="editbar-note">${note}</span></div>
+    <button type="button" class="navbtn strong" onPointerDown=${keep} onMouseDown=${keep} onClick=${save} disabled=${!canSave}>Save</button>
+  </header>`;
+}
+
+function ReadView({ st, upd }) {
+  return html`<div>
+    <header class="rv-head">
+      <div><h1 class="rv-title">Life Quest</h1><p class="rv-sub">Q4 2026, Day 43 of 92</p></div>
+      <button type="button" class="pill" onClick=${() => startEdit(upd)}>Edit</button>
+    </header>
+    <${ReadBack} quest=${st.edit.saved} d="life" q=${EDIT_Q} />
+    <p class="proto-note">A stand-in for the Quests screen, which the Today prototype designs. Edit mode pretends today is 12 Nov.</p>
+  </div>`;
+}
+
+function Done({ st, upd }) {
+  const S = st.setup, q = QUARTERS[S.q];
+  return html`<div class="done">
+    <h1 class="done-h">${q.label} is set up.</h1>
+    <p class="done-sub">${q.status}</p>
+    ${DOMAINS.map(d => html`<div class="done-q">
+      <p class="done-d">${DNAME[d]}</p>
+      <p class="mine done-main">${S[d].main.trim()}${endPunct(S[d].main)}</p>
+    </div>`)}
+    <p class="proto-note">A stand-in for Today, which the next prototype designs.</p>
+    <button type="button" class="ghost" onClick=${() => upd(s => { s.setup = freshSetup(); return s; })}>Set it up again from blank</button>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- A: one part at a time
+
+function Ticks({ d, step }) {
+  const t = [];
+  DOMAINS.forEach((dom, k) => {
+    if (k) t.push(html`<i class="gap"></i>`);
+    for (let i = 0; i < 6; i++) {
+      const now = dom === d && i === step;
+      const done = k < DOMAINS.indexOf(d) || (dom === d && i < step);
+      t.push(html`<i class=${now ? 't-now' : done ? 't-done' : ''}></i>`);
+    }
+  });
+  return html`<div class="ticks" aria-hidden="true">${t}</div>`;
+}
+
+// One Scaffold sentence per screen. `ret` means the part was opened from the read-back, so Done returns there.
+function APart({ p, d, q, quest, b, prefix, ret, first, onBack, onNext, onSkip, head, edit }) {
+  const canGo = edit || partDone(quest, p); // in Edit, Save is what refuses an incomplete Quest
+  const go = () => canGo && onNext();
+  const offerSkip = p.optional && onSkip && !quest.obstacle.trim() && !quest.obstacleSkipped;
+  return html`<div>
+    ${head}
+    <div class="a-step" key=${d + p.key}>
+      <p class="a-open">${p.open(d, q)}</p>
+      <${PartField} p=${p} quest=${quest} b=${b} prefix=${prefix} onDone=${go} />
+      ${p.optional && quest.obstacleSkipped && !quest.obstacle.trim() && html`<p class="note">Skipped for now. You can add one any time.</p>`}
+      <p class="hint">${fill(p.hint, q)}</p>
+      ${p.key === 'main' && html`<${Prompts} d=${d} q=${q} />`}
+    </div>
+    <${Bar}>
+      ${ret ? html`<span></span>` : html`<button type="button" class="ghost" onPointerDown=${keep} onMouseDown=${keep} onClick=${onBack} disabled=${first}>Back</button>`}
+      <span class="grow"></span>
+      ${offerSkip && html`<button type="button" class="ghost" onPointerDown=${keep} onMouseDown=${keep} onClick=${onSkip}>Skip for now</button>`}
+      <button type="button" class="primary" onPointerDown=${keep} onMouseDown=${keep} onClick=${go} disabled=${!canGo}>
+        ${ret ? 'Done' : p.key === 'commitments' ? 'Read it back' : 'Next'}</button>
+    <//>
+  </div>`;
+}
+
+function ASetup({ st, upd, say }) {
+  const S = st.setup, q = QUARTERS[S.q], { d, step, ret } = S.a, quest = S[d];
+  const b = binder(upd, s => s.setup[s.setup.a.d]);
+  useEffect(() => { window.scrollTo(0, 0); }, [d, step]);
+  const go = (d2, step2, ret2 = false) => upd(s => { s.setup.a = { d: d2, step: step2, ret: ret2 }; return s; });
+  const toPart = (d2, i, ret2 = false) => { holdKeyboard(); go(d2, i, ret2); focusSoon(entryId('as', S[d2], PARTS[i])); };
+  const toReview = () => { dropKeyboard(); go(d, 6); };
+  const head = html`<${QuarterLine} st=${st} upd=${upd} /><${Ticks} d=${d} step=${step} />
+    <p class="a-where">${DNAME[d]} Quest, ${step < 6 ? `part ${step + 1} of 6` : 'read it back'}</p>`;
+
+  if (step === 6) {
+    const left = missing(quest).length;
+    const finish = () => {
+      if (d === FIRST) {
+        const first = !S.finished[FIRST];
+        upd(s => { s.setup.finished[FIRST] = true; s.setup.a = { d: SECOND, step: 0, ret: false }; return s; });
+        if (first) say(`${DNAME[FIRST]} Quest finished. Now ${DNAME[SECOND]}.`);
+        toPart(SECOND, 0);
+      } else {
+        dropKeyboard();
+        upd(s => { s.setup.finished[SECOND] = true; s.setup.done = true; return s; });
+      }
+    };
+    return html`<div>
+      ${head}
+      <h1 class="a-title">Your ${DNAME[d]} Quest</h1>
+      <p class="lede">Read it through. Tap a part to change it.</p>
+      <${ReadBack} quest=${quest} d=${d} q=${q} onPart=${i => toPart(d, i, true)} />
+      <${Bar}>
+        <button type="button" class="ghost" onClick=${() => toPart(d, 5)}>Back</button>
+        <button type="button" class="primary" onClick=${finish} disabled=${left > 0}>
+          ${S.finished[d] ? (d === FIRST ? `On to ${DNAME[SECOND]}` : 'Done') : `Finish ${DNAME[d]} Quest`}</button>
+      <//>
+    </div>`;
+  }
+
+  const p = PARTS[step];
+  const onNext = () => (ret || step === 5 ? toReview() : toPart(d, step + 1));
+  const onBack = () => (step > 0 ? toPart(d, step - 1) : d === SECOND ? (dropKeyboard(), go(FIRST, 6)) : null);
+  const onSkip = () => { b.skip(); onNext(); };
+  return html`<${APart} p=${p} d=${d} q=${q} quest=${quest} b=${b} prefix="as" ret=${ret} first=${d === FIRST && step === 0}
+    onBack=${onBack} onNext=${onNext} onSkip=${onSkip} head=${head} />`;
+}
+
+function AEdit({ st, upd, say, ask }) {
+  const E = st.edit;
+  if (!E.draft) return html`<${ReadView} st=${st} upd=${upd} />`;
+  const b = binder(upd, s => s.edit.draft);
+  const { view, step } = E.a;
+  const toPart = i => { holdKeyboard(); upd(s => { s.edit.a = { view: 'part', step: i }; return s; }); focusSoon(entryId('ae', E.draft, PARTS[i])); };
+  const toReview = () => { dropKeyboard(); upd(s => { s.edit.a = { view: 'review', step: 0 }; return s; }); };
+  if (view === 'part') {
+    const p = PARTS[step];
+    const head = html`<p class="a-where">Editing your Life Quest</p>`;
+    return html`<${APart} p=${p} d="life" q=${EDIT_Q} quest=${E.draft} b=${b} prefix="ae" ret edit onNext=${toReview} head=${head} />`;
+  }
+  return html`<div>
+    <${EditBar} st=${st} upd=${upd} say=${say} ask=${ask} />
+    <p class="lede">Tap a part to change it.</p>
+    <${ReadBack} quest=${E.draft} d="life" q=${EDIT_Q} base=${E.saved} onPart=${toPart} />
+  </div>`;
+}
+
+// ---------------------------------------------------------------- B: one page
+
+// An inline blank inside the Scaffold sentence, so the page reads as prose while you write it.
+function Blank({ id, value, ph, onInput, onEnter }) {
+  const ref = useRef();
+  useLayoutEffect(() => { const el = ref.current; if (el.textContent !== value) el.textContent = value; }, [value]);
+  return html`<span id=${id} ref=${ref} class="blank" contenteditable="plaintext-only" role="textbox" aria-label=${ph} data-ph=${ph}
+    enterkeyhint="next" autocapitalize="none" spellcheck="true"
+    onKeyDown=${e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); onEnter(); } }}
+    onPaste=${e => { e.preventDefault(); document.execCommand('insertText', false, oneLine(e.clipboardData.getData('text/plain') || '')); }}
+    onInput=${e => {
+      const el = e.currentTarget;
+      let t = el.textContent;
+      if (/[\r\n]/.test(t)) { t = oneLine(t); el.textContent = t; placeCaretEnd(el); }
+      if (!t) el.innerHTML = '';
+      onInput(t);
+    }}></span>`;
+}
+
+function BDoc({ quest, d, q, b, prefix, onNext, edit, base }) {
+  const [focusKey, setFocusKey] = useState(null);
+  return PARTS.map((p, i) => {
+    const id = `${prefix}-${p.key}`;
+    const changed = base && partChanged(quest, base, p);
+    const skipped = p.optional && quest.obstacleSkipped && !quest.obstacle.trim();
+    const hint = focusKey === p.key && html`<p class="b-hint">${fill(p.hint, q)}</p>`;
+    const wrap = { class: 'b-part' + (changed ? ' changed' : '') + (skipped ? ' skipped' : ''),
+      onFocusCapture: () => setFocusKey(p.key), onBlurCapture: () => setFocusKey(k => (k === p.key ? null : k)) };
+    if (p.kind === 'list') {
+      return html`<div key=${p.key} ...${wrap}>
+        <p class="b-para"><span class="given">${p.open(d, q)}</span></p>
+        <${ListEditor} items=${quest[p.key]} setItems=${v => b.setItems(p.key, v)} pre=${id + '-'} ph=${p.ph} onExit=${() => onNext(i)} cls="b-list" />
+        ${hint}
+      </div>`;
+    }
+    const focusBlank = e => { if (e.target.id !== id) focusNow(id); };
+    return html`<div key=${p.key} ...${wrap}>
+      <p class="b-para" onClick=${focusBlank}>
+        <span class="given">${p.open(d, q)}</span>${' '}<${Blank} id=${id} value=${quest[p.key]} ph=${p.ph} onInput=${v => b.set(p.key, v)} onEnter=${() => onNext(i)} />
+      </p>
+      ${hint}
+      ${p.key === 'main' && html`<${Prompts} d=${d} q=${q} />`}
+      ${p.optional && !edit && !quest.obstacle.trim() && (skipped
+        ? html`<p class="note">Skipped for now. Tap the line to add one.</p>`
+        : html`<button type="button" class="chip" onPointerDown=${keep} onMouseDown=${keep} onClick=${() => { b.skip(); onNext(i); }}>No obstacle yet</button>`)}
+    </div>`;
+  });
+}
+
+function BSetup({ st, upd }) {
+  const S = st.setup, q = QUARTERS[S.q];
+  const order = DOMAINS.flatMap(d => PARTS.map((p, i) => [d, i]));
+  const left = missing(S.life).length + missing(S.work).length;
+  const nextFrom = (d, i) => {
+    const k = order.findIndex(([dd, ii]) => dd === d && ii === i);
+    const n = order[k + 1];
+    if (!n) return dropKeyboard();
+    focusNow(entryId('bs-' + n[0], S[n[0]], PARTS[n[1]]));
+  };
+  const firstMissing = () => {
+    const hit = order.find(([d, i]) => !partDone(S[d], PARTS[i]));
+    if (hit) focusNow(entryId('bs-' + hit[0], S[hit[0]], PARTS[hit[1]]));
+  };
+  const finish = () => { dropKeyboard(); upd(s => { s.setup.finished = { life: true, work: true }; s.setup.done = true; return s; }); window.scrollTo(0, 0); };
+  const jump = d => document.getElementById('b-' + d).scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+  return html`<div>
+    <${QuarterLine} st=${st} upd=${upd} />
+    <nav class="b-nav">${DOMAINS.map(d => html`<button type="button" class="b-navbtn" onClick=${() => jump(d)}>${DNAME[d]} <${Dots} quest=${S[d]} /></button>`)}</nav>
+    ${DOMAINS.map(d => html`<section id=${'b-' + d} class="b-sec">
+      <h2 class="b-h">${DNAME[d]}</h2>
+      <${BDoc} quest=${S[d]} d=${d} q=${q} b=${binder(upd, s => s.setup[d])} prefix=${'bs-' + d} onNext=${i => nextFrom(d, i)} />
+    </section>`)}
+    <${Bar}>
+      <button type="button" class="ghost" onPointerDown=${keep} onMouseDown=${keep} onClick=${firstMissing} disabled=${!left}>
+        ${left ? `${left} ${left === 1 ? 'part' : 'parts'} to go` : 'All written'}</button>
+      <button type="button" class="primary" onPointerDown=${keep} onMouseDown=${keep} onClick=${finish} disabled=${left > 0}>Finish setup</button>
+    <//>
+  </div>`;
+}
+
+function BEdit({ st, upd, say, ask }) {
+  const E = st.edit;
+  if (!E.draft) return html`<${ReadView} st=${st} upd=${upd} />`;
+  const onNext = i => { const n = PARTS[i + 1]; return n ? focusNow(entryId('be', E.draft, n)) : dropKeyboard(); };
+  return html`<div>
+    <${EditBar} st=${st} upd=${upd} say=${say} ask=${ask} />
+    <section class="b-sec">
+      <${BDoc} quest=${E.draft} d="life" q=${EDIT_Q} b=${binder(upd, s => s.edit.draft)} prefix="be" onNext=${onNext} edit base=${E.saved} />
+    </section>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- C: parts list
+
+function CHub({ quest, onOpen, edit, base }) {
+  return html`<ul class="c-list">${PARTS.map((p, i) => {
+    const done = partDone(quest, p, edit);
+    const v = partValue(quest, p);
+    let peek = null;
+    if (p.kind === 'list' && v.length) peek = html`${v[0]}${v.length > 1 ? html` <span class="c-more">and ${v.length - 1} more</span>` : ''}`;
+    else if (p.kind === 'text' && v) peek = v;
+    else if (p.optional && quest.obstacleSkipped) peek = 'Skipped for now';
+    const changed = base && partChanged(quest, base, p);
+    return html`<li key=${p.key}><button type="button" class="c-row" onClick=${() => onOpen(i)}>
+      <span class="c-top">
+        <span class="c-name">${p.name}</span>
+        ${changed ? html`<span class="c-tag changed">Changed</span>` : p.optional ? html`<span class="c-tag">Optional</span>` : ''}
+        <span class="c-mark" aria-label=${done ? 'written' : 'not written'}>${done && !edit ? '✓' : ''}</span>
+      </span>
+      <span class=${'c-peek' + (peek ? '' : ' empty')}>${peek || 'Not written yet'}</span>
+    </button></li>`;
+  })}</ul>`;
+}
+
+function CSheet({ quest, d, q, i, b, prefix, onClose, onGo, edit }) {
+  const p = PARTS[i];
+  const last = i === PARTS.length - 1;
+  const next = () => (last ? onClose() : onGo(i + 1));
+  const offerSkip = p.optional && !edit && !quest.obstacle.trim() && !quest.obstacleSkipped;
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-label=${p.name}>
+    <header class="sheet-head">
+      <span></span>
+      <div class="editbar-mid"><span class="editbar-title">${p.name}</span><span class="editbar-note">${DNAME[d]} Quest</span></div>
+      <button type="button" class="navbtn strong" onPointerDown=${keep} onMouseDown=${keep} onClick=${onClose}>Done</button>
+    </header>
+    <div class="sheet-body" key=${p.key}>
+      <p class="a-open">${p.open(d, q)}</p>
+      <${PartField} p=${p} quest=${quest} b=${b} prefix=${prefix} onDone=${next} />
+      ${p.optional && quest.obstacleSkipped && !quest.obstacle.trim() && html`<p class="note">Skipped for now. You can add one any time.</p>`}
+      <p class="hint">${fill(p.hint, q)}</p>
+      ${p.key === 'main' && html`<${Prompts} d=${d} q=${q} />`}
+    </div>
+    <${Bar}>
+      ${offerSkip ? html`<button type="button" class="ghost" onPointerDown=${keep} onMouseDown=${keep} onClick=${() => { b.skip(); next(); }}>Skip for now</button>` : html`<span></span>`}
+      <button type="button" class="ghost" onPointerDown=${keep} onMouseDown=${keep} onClick=${next}>${last ? 'Back to the list' : `Next: ${PARTS[i + 1].name}`}</button>
+    <//>
+  </div>`;
+}
+
+function CSetup({ st, upd }) {
+  const S = st.setup, q = QUARTERS[S.q], d = S.c.tab, open = S.c.open;
+  const b = binder(upd, s => s.setup[s.setup.c.tab]);
+  const left = missing(S.life).length + missing(S.work).length;
+  const openPart = i => { holdKeyboard(); upd(s => { s.setup.c.open = i; return s; }); focusSoon(entryId('cs-' + d, S[d], PARTS[i])); };
+  const close = () => { dropKeyboard(); upd(s => { s.setup.c.open = null; return s; }); };
+  const tab = t => upd(s => { s.setup.c.tab = t; return s; });
+  const finish = () => { upd(s => { s.setup.finished = { life: true, work: true }; s.setup.done = true; return s; }); window.scrollTo(0, 0); };
+  return html`<div>
+    <${QuarterLine} st=${st} upd=${upd} />
+    <div class="seg" role="tablist">${DOMAINS.map(t => html`<button type="button" role="tab" aria-selected=${t === d} class=${t === d ? 'on' : ''} onClick=${() => tab(t)}>
+      ${DNAME[t]}<span class="seg-n">${6 - missing(S[t]).length} of 6</span></button>`)}</div>
+    <${CHub} quest=${S[d]} onOpen=${openPart} />
+    ${d === FIRST && !missing(S[FIRST]).length && missing(S[SECOND]).length > 0 && html`<button type="button" class="pill wide" onClick=${() => tab(SECOND)}>On to ${DNAME[SECOND]}</button>`}
+    ${open === null
+      ? html`<${Bar}>
+          <span class="lede" style="margin:0">${left ? `${left} ${left === 1 ? 'part' : 'parts'} to go` : 'All written'}</span>
+          <button type="button" class="primary" onClick=${finish} disabled=${left > 0}>Finish setup</button>
+        <//>`
+      : html`<${CSheet} quest=${S[d]} d=${d} q=${q} i=${open} b=${b} prefix=${'cs-' + d} onClose=${close} onGo=${openPart} />`}
+  </div>`;
+}
+
+function CEdit({ st, upd, say, ask }) {
+  const E = st.edit;
+  if (!E.draft) return html`<${ReadView} st=${st} upd=${upd} />`;
+  const open = E.c.open;
+  const openPart = i => { holdKeyboard(); upd(s => { s.edit.c.open = i; return s; }); focusSoon(entryId('ce', E.draft, PARTS[i])); };
+  const close = () => { dropKeyboard(); upd(s => { s.edit.c.open = null; return s; }); };
+  return html`<div>
+    <${EditBar} st=${st} upd=${upd} say=${say} ask=${ask} />
+    <${CHub} quest=${E.draft} onOpen=${openPart} edit base=${E.saved} />
+    ${open !== null && html`<${CSheet} quest=${E.draft} d="life" q=${EDIT_Q} i=${open} b=${binder(upd, s => s.edit.draft)} prefix="ce" onClose=${close} onGo=${openPart} edit />`}
+  </div>`;
+}
+
+// ---------------------------------------------------------------- shell
+
+function Confirm({ c, close }) {
+  return html`<div class="scrim" onClick=${close}>
+    <div class="action-sheet" role="alertdialog" aria-label=${c.title} onClick=${e => e.stopPropagation()}>
+      <p class="as-title">${c.title}</p>
+      <button type="button" class="as-btn danger" onClick=${() => { close(); c.onYes(); }}>${c.yes}</button>
+      <button type="button" class="as-btn" onClick=${close}>${c.no}</button>
+    </div>
+  </div>`;
+}
+
+function ProtoStrip({ st, upd, cycle }) {
+  const [panel, setPanel] = useState(false);
+  const setMode = m => { dropKeyboard(); upd(s => { s.mode = m; return s; }); };
+  const wipe = () => { if (window.confirm('Wipe all prototype data?')) { try { localStorage.removeItem(STORE); } catch (e) {} location.reload(); } };
+  return html`<div class="proto">
+    <div class="proto-row">
+      <button type="button" class="proto-arrow" aria-label="Previous variant" onClick=${() => cycle(-1)}>‹</button>
+      <button type="button" class="proto-label" aria-expanded=${panel} onClick=${() => setPanel(!panel)}>
+        <b>${st.variant}</b> ${VARIANTS[st.variant]}<span class="proto-mode">${st.mode === 'edit' ? 'Edit' : 'Setup'}</span></button>
+      <button type="button" class="proto-arrow" aria-label="Next variant" onClick=${() => cycle(1)}>›</button>
+    </div>
+    ${panel && html`<div class="proto-panel">
+      <div class="proto-seg">
+        <button type="button" aria-pressed=${st.mode === 'setup'} onClick=${() => setMode('setup')}>Set up a Quarter</button>
+        <button type="button" aria-pressed=${st.mode === 'edit'} onClick=${() => setMode('edit')}>Edit the Life Quest</button>
+      </div>
+      <p>All three variants share one draft, so you can switch midway and compare. Setup pretends today is 28 Sep; Edit pretends it’s 12 Nov.</p>
+      <div class="proto-actions">
+        <button type="button" onClick=${() => location.reload()}>Reload, as if iOS closed the app</button>
+        <button type="button" onClick=${wipe}>Wipe data</button>
+      </div>
+      <details><summary>Stored state</summary><pre>${JSON.stringify(st, null, 1)}</pre></details>
+    </div>`}
+  </div>`;
+}
+
+const VIEWS = { A: [ASetup, AEdit], B: [BSetup, BEdit], C: [CSetup, CEdit] };
+
+function App() {
+  const [st, setSt] = useState(load);
+  const upd = fn => setSt(s => fn(structuredClone(s)));
+  const [toast, say] = useState(() => resumeNote(st));
+  const [confirming, ask] = useState(null);
+  useKeyboardInset();
+  useEffect(() => { try { localStorage.setItem(STORE, JSON.stringify(st)); } catch (e) { /* private mode */ } }, [st]);
+  useEffect(() => {
+    const u = new URL(location.href);
+    u.searchParams.set('variant', st.variant); u.searchParams.set('mode', st.mode);
+    history.replaceState(null, '', u);
+    window.scrollTo(0, 0);
+  }, [st.variant, st.mode]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => say(null), 2600); return () => clearTimeout(t); }, [toast]);
+  const cycle = dir => { dropKeyboard(); upd(s => { const k = VKEYS.indexOf(s.variant); s.variant = VKEYS[(k + dir + VKEYS.length) % VKEYS.length]; return s; }); };
+  useEffect(() => {
+    const f = e => {
+      if (isEditable(document.activeElement)) return;
+      if (e.key === 'ArrowRight') cycle(1);
+      if (e.key === 'ArrowLeft') cycle(-1);
+    };
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  }, []);
+  const [Setup, Edit] = VIEWS[st.variant];
+  const View = st.mode === 'edit' ? Edit : st.setup.done ? Done : Setup;
+  return html`
+    <${ProtoStrip} st=${st} upd=${upd} cycle=${cycle} />
+    <main class="app" key=${st.variant + st.mode}><${View} st=${st} upd=${upd} say=${say} ask=${ask} /></main>
+    ${toast && html`<div class="toast" role="status">${toast}</div>`}
+    ${confirming && html`<${Confirm} c=${confirming} close=${() => ask(null)} />`}`;
+}
+
+render(html`<${App} />`, document.getElementById('root'));
+</script>
+</body>
+</html>

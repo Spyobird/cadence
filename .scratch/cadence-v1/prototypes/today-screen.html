@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en" data-look="dark" data-font="1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Today proto">
+<title>Prototype: the Today screen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@700&family=Manrope:wght@800&family=Outfit:wght@700&family=Plus+Jakarta+Sans:wght@800&family=Sora:wght@700&display=swap">
+<!--
+  PROTOTYPE, throwaway. Answers "What does opening Cadence look and feel like, and how is the rest of the app reached?"
+  (.scratch/cadence-v1/issues/08-prototype-morning-screen.md)
+
+  Round 4: the owner's mix of round 3's directions.
+    - 1's big day ring and date.
+    - 3's page: "My Work Main Quest is to" small, the Main Quest large, "Read the whole Quest" folds the rest out.
+    - 2's labelled details: each part's name small and grey above the owner's words.
+    - 3's "Write today's Reflection" link, opening 2's popup box.
+  ?variant=1..6 switches the Main Quest's bold typeface: SF Pro, Geist, Plus Jakarta Sans, Manrope, Sora, Outfit.
+  All but SF Pro load from Google Fonts here; the app would bundle the chosen one so it works offline.
+  Round 4b (after the owner leaned to SF Pro and Manrope): more typefaces, and a border on the Reflect link.
+  Rounds 1 to 3 are on branch prototype/today-screen.
+
+  Type scale: 13 / 17 / 28 px, plus the ring's numeral. Hierarchy comes from weight and colour, not more sizes.
+
+  ?state= pretends a date: running (Thu 12 Nov, Day 43), stale (backup overdue), before (Mon 28 Sep, before Day 1),
+  late (Sun 20 Dec, last 14 days), ended (Sat 2 Jan, Q1 2027 not set up), safari (opened in a Safari tab).
+  ?look=dark|light. Nothing is stored: a reload starts fresh.
+
+  Run: python3 -m http.server 8124 --directory .scratch/cadence-v1/prototypes
+  Open: http://<mac LAN ip>:8124/today-screen.html on the iPhone.
+-->
+<style>
+:root, [data-look=dark] {
+  --void: #0F1113;
+  --surface: #181B1F;
+  --raise: #23272C;
+  --line: #262A30;
+  --ink: #EEE9DF;
+  --given: #A0A7B2;
+  --faint: #7F8794;
+  --gold: #D4AF37;
+  --gold-dim: #5E5126;
+  --on-gold: #17140A;
+  --danger: #FF7A66;
+  --glass: rgba(15, 17, 19, .84);
+  --shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+[data-look=light] {
+  --void: #F4F5F7;
+  --surface: #FFFFFF;
+  --raise: #E9EBEF;
+  --line: #E0E3E8;
+  --ink: #15171A;
+  --given: #4A525C;
+  --faint: #5F6875;
+  --gold: #C9A227;
+  --gold-dim: #DCC883;
+  --on-gold: #17140A;
+  --danger: #C0392B;
+  --glass: rgba(244, 245, 247, .84);
+  --shadow: 0 20px 60px rgba(20, 24, 30, .18);
+  color-scheme: light;
+}
+:root {
+  --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", sans-serif;
+  /* The whole scale. */
+  --s: 13px; --s-lh: 18px;
+  --m: 17px; --m-lh: 24px;
+  --l: 28px; --l-lh: 34px;
+  --kb: 0px; --vvh: 100vh; --vvt: 0px;
+  --gutter: 22px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html { background: var(--void); -webkit-text-size-adjust: 100%; }
+html.lock, html.lock body { overflow: hidden; }
+body { margin: 0; background: var(--void); color: var(--ink); font: 400 var(--m)/var(--m-lh) var(--sans); -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; touch-action: manipulation; text-align: inherit; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+p, h1, h2, ol { margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+.s { font-size: var(--s); line-height: var(--s-lh); }
+.faint { color: var(--faint); }
+.given { color: var(--given); }
+#kb-proxy { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; font-size: 16px; border: 0; padding: 0; pointer-events: none; }
+
+.app {
+  max-width: 600px; margin: 0 auto;
+  padding: 0 max(var(--gutter), env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left));
+}
+
+/* Shared pieces */
+.menu-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--given); position: relative; flex: none; }
+.menu-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.menu-btn .dot { position: absolute; top: 10px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.ring { position: relative; flex: none; }
+.ring svg { display: block; }
+.ring-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
+.ring-big { font-weight: 300; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.ring-small { font-size: var(--s); color: var(--faint); margin-top: 4px; }
+.safari { margin: 12px 0 0; padding: 14px 16px; border-radius: 16px; background: var(--danger); color: #1A0703; }
+.safari b { display: block; }
+.safari p { font-size: var(--s); line-height: var(--s-lh); margin-top: 4px; }
+.line-note { color: var(--given); }
+.gold-btn { color: var(--gold); font-weight: 600; min-height: 44px; }
+.primary { background: var(--gold); color: var(--on-gold); font-weight: 600; border-radius: 999px; min-height: 48px; padding: 0 24px; }
+.ghost { background: var(--raise); border-radius: 999px; min-height: 48px; padding: 0 22px; font-weight: 600; }
+.pen { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.chev { width: 16px; height: 16px; fill: none; stroke: var(--faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); flex: none; }
+.open > button .chev, button.open .chev { transform: rotate(180deg); }
+.fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s var(--ease); }
+.fold.open { grid-template-rows: 1fr; }
+.fold > div { overflow: hidden; }
+.quiet { color: var(--faint); }
+
+.pager { display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; margin: 0 calc(-1 * var(--gutter)); scrollbar-width: none; overscroll-behavior-x: contain; }
+.pager::-webkit-scrollbar { display: none; }
+.page { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 0 var(--gutter); min-height: 50vh; }
+
+/* Text tabs with a gold dot (1 and 3) */
+.tabs {
+  position: sticky; top: 0; z-index: 12; display: flex; justify-content: center; gap: 32px;
+  margin: 0 calc(-1 * var(--gutter)); padding: 10px var(--gutter) 16px;
+  background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+}
+.tab { position: relative; min-height: 32px; font-weight: 600; color: var(--faint); transition: color .2s; }
+.tab.on { color: var(--ink); }
+.tab::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--gold); opacity: 0; transform: scale(.4); transition: opacity .2s, transform .25s var(--ease); }
+.tab.on::after { opacity: 1; transform: none; }
+
+/* The writing surfaces */
+.field {
+  display: block; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; color: var(--ink); caret-color: var(--gold);
+  resize: none; outline: none; font: var(--m)/var(--m-lh) var(--sans); -webkit-appearance: none;
+}
+.field::placeholder { color: var(--faint); opacity: 1; }
+.scrim { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .45); }
+
+/* The Main Quest's typeface is the variant. Only the Main Quest uses it; everything else is the system sans. */
+[data-font="1"] { --title: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --title-w: 700; --title-ls: -0.022em; }
+[data-font="2"] { --title: "Geist", -apple-system, system-ui, sans-serif; --title-w: 700; --title-ls: -0.03em; }
+[data-font="3"] { --title: "Plus Jakarta Sans", -apple-system, system-ui, sans-serif; --title-w: 800; --title-ls: -0.025em; }
+[data-font="4"] { --title: "Manrope", -apple-system, system-ui, sans-serif; --title-w: 800; --title-ls: -0.03em; }
+[data-font="5"] { --title: "Sora", -apple-system, system-ui, sans-serif; --title-w: 700; --title-ls: -0.035em; }
+[data-font="6"] { --title: "Outfit", -apple-system, system-ui, sans-serif; --title-w: 700; --title-ls: -0.02em; }
+
+/* Round 4: the Today page ---------------------------------------------------------------------- */
+.top { position: relative; display: flex; flex-direction: column; align-items: center; padding: 28px 0 24px; gap: 14px; }
+.top .menu-btn { position: absolute; top: 10px; right: -12px; }
+.kicker { color: var(--faint); padding-top: 14px; }
+.mq { font: var(--title-w) var(--l)/var(--l-lh) var(--title); letter-spacing: var(--title-ls); margin-top: 4px; text-wrap: pretty; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 10px; color: var(--given); }
+.part { padding: 12px 0; border-top: 1px solid var(--line); }
+.part:first-child { margin-top: 6px; }
+.part ol { padding-left: 1.3em; margin-top: 2px; }
+.part li::marker { color: var(--faint); }
+.write { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 22px; padding: 0 18px 0 14px; border: 1px solid var(--gold-dim); border-radius: 999px; color: var(--gold); font-weight: 600; }
+.saved { margin-top: 22px; padding-left: 14px; border-left: 2px solid var(--gold-dim); }
+.saved .txt { white-space: pre-wrap; }
+.pop-wrap { position: fixed; left: 0; right: 0; top: var(--vvt); height: var(--vvh); z-index: 51; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.pop { width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto; padding: 22px 20px 14px; border-radius: 26px; background: var(--surface); box-shadow: var(--shadow); }
+.pop .field { min-height: 120px; margin-top: 16px; padding: 14px; border-radius: 14px; background: var(--void); }
+.pop-btns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 14px; }
+.pop-btns .ghost, .pop-btns .primary { min-height: 44px; }
+.pop-btns .primary:disabled { background: var(--raise); color: var(--faint); }
+.pop-scrim { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+
+/* Menu sheet and pushed screens ---------------------------------------------------------------- */
+.bsheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 51; max-width: 600px; margin: 0 auto; max-height: calc(100% - 24px); overflow-y: auto;
+  background: var(--surface); border-radius: 24px 24px 0 0; padding: 8px var(--gutter) calc(18px + env(safe-area-inset-bottom));
+}
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 14px; }
+.mrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; border-top: 1px solid var(--line); }
+.mrow > button.wide { flex: 1; display: flex; justify-content: space-between; align-items: center; min-height: 56px; gap: 12px; }
+.mval { color: var(--faint); }
+.mval.due { color: var(--gold); }
+.chip { background: var(--raise); border-radius: 999px; padding: 0 14px; min-height: 34px; font-weight: 600; }
+.chips { display: flex; gap: 6px; }
+.navhead {
+  position: sticky; top: 0; z-index: 15; display: grid; grid-template-columns: 6em 1fr 6em; align-items: center;
+  margin: 0 calc(-1 * var(--gutter)); padding: 2px var(--gutter);
+  background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+}
+.navbtn { min-height: 44px; justify-self: start; color: var(--gold); }
+.navbtn.strong { justify-self: end; font-weight: 600; }
+.navbtn:disabled { color: var(--faint); }
+.navtitle { text-align: center; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.navsub { display: block; font-weight: 400; font-size: var(--s); line-height: var(--s-lh); color: var(--faint); }
+.h1 { font: 700 var(--l)/var(--l-lh) var(--sans); letter-spacing: -0.02em; padding: 14px 0 8px; }
+.proto-note { color: var(--faint); font-size: var(--s); line-height: var(--s-lh); border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 28px; }
+.readback p, .readback > div { padding: 8px 0; }
+.readback .opening { color: var(--faint); }
+.readback ol { padding-left: 1.3em; }
+.readback li::marker { color: var(--faint); }
+.hist { list-style: none; padding: 0; }
+.hist-row { display: block; width: 100%; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.hist-row b { color: var(--gold); font-weight: 600; margin-left: 6px; }
+.hist-main { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+.feed-day { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.feed-item { margin-top: 10px; }
+.feed-text { white-space: pre-wrap; }
+.stat { display: grid; gap: 2px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.btns { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 22px; }
+
+/* Action sheets and toast */
+.as-wrap { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: rgba(0, 0, 0, .5); }
+.action-sheet { width: 100%; max-width: 480px; margin: 0 auto 10px; padding: 0 10px env(safe-area-inset-bottom); }
+.as-group { background: var(--surface); border-radius: 16px; overflow: hidden; margin-bottom: 8px; }
+.as-title { padding: 14px 18px; text-align: center; font-size: var(--s); line-height: var(--s-lh); color: var(--given); border-bottom: 1px solid var(--line); }
+.as-body { padding: 14px 18px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.as-btn { display: block; width: 100%; min-height: 56px; text-align: center; border-bottom: 1px solid var(--line); color: var(--ink); }
+.as-btn:last-child { border-bottom: 0; }
+.as-btn.danger { color: var(--danger); }
+.as-btn.strong { font-weight: 600; }
+.toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 58px); transform: translateX(-50%); z-index: 80;
+  max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; text-align: center;
+  background: var(--ink); color: var(--void); font-weight: 500; box-shadow: 0 6px 24px rgba(0, 0, 0, .3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bsheet, .action-sheet { animation: up .3s var(--ease); }
+  .pop { animation: pop .26s var(--ease); }
+  .scrim, .as-wrap { animation: fade .2s ease-out; }
+  .pushed { animation: slide .24s var(--ease); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold, .chev, .tab::after { transition: none; }
+}
+@keyframes up { from { transform: translateY(60px); opacity: 0; } }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes slide { from { transform: translateX(20px); opacity: 0; } }
+
+/* Prototype chrome: deliberately not part of the design */
+.proto { position: relative; z-index: 25; background: #fff; color: #000; font: 14px/1.4 var(--sans); padding-top: env(safe-area-inset-top); border-bottom: 2px dashed #000; }
+.proto-row { display: flex; align-items: center; justify-content: center; min-height: 42px; }
+.proto-arrow { width: 44px; height: 42px; font-size: 24px; color: #000; text-align: center; }
+.proto-label { min-height: 42px; padding: 0 8px; color: #000; }
+.proto-chip { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #000; color: #fff; font-size: 12px; }
+.proto-panel { padding: 2px 16px 14px; }
+.proto-panel p { margin: 8px 0; color: #333; }
+.proto-seg { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.proto-seg button { border: 1px solid #000; border-radius: 8px; padding: 6px 10px; min-height: 38px; color: #000; }
+.proto-seg button[aria-pressed=true] { background: #000; color: #fff; }
+.proto-k { font-weight: 600; margin-top: 12px; }
+</style>
+</head>
+<body>
+<input id="kb-proxy" type="text" aria-hidden="true" tabindex="-1" autocomplete="off">
+<div id="root"></div>
+<script type="module">
+import { html, render, useState, useEffect, useLayoutEffect, useRef } from 'https://cdn.jsdelivr.net/npm/htm@3/preact/standalone.module.js';
+
+// ---------------------------------------------------------------- dates
+
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const D = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const diff = (a, b) => Math.round((b - a) / 864e5); // whole days from a to b
+const short = d => `${d.getDate()} ${MON[d.getMonth()]}`;
+const wd = d => WD[d.getDay()];
+const wds = d => WD[d.getDay()].slice(0, 3);
+const clock = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const same = (a, b) => diff(a, b) === 0;
+
+const Q4 = { name: 'Q4 2026', start: D('2026-10-01'), end: D('2026-12-31'), endLong: '31 December 2026' };
+const Q1 = { name: 'Q1 2027', start: D('2027-01-01'), end: D('2027-03-31') };
+const TOTAL = diff(Q4.start, Q4.end) + 1; // 92
+const dayOf = date => diff(Q4.start, date) + 1;
+
+// ---------------------------------------------------------------- content
+
+const VARIANTS = { 1: 'SF Pro', 2: 'Geist', 3: 'Plus Jakarta Sans', 4: 'Manrope', 5: 'Sora', 6: 'Outfit' }; // the Main Quest's typeface
+const VKEYS = Object.keys(VARIANTS);
+const STATES = {
+  running: { label: 'Day 43', today: '2026-11-12', backup: '2026-11-09T20:02' },
+  stale: { label: 'Backup overdue', today: '2026-11-12', backup: '2026-10-27T21:15' },
+  before: { label: 'Before Day 1', today: '2026-09-28', backup: null },
+  late: { label: 'Last 14 days', today: '2026-12-20', backup: '2026-12-14T19:30' },
+  ended: { label: 'Quarter ended', today: '2027-01-02', backup: '2026-12-14T19:30' },
+  safari: { label: 'Safari tab', today: '2026-11-12', backup: '2026-11-09T20:02', safari: true },
+};
+const DOMAINS = ['work', 'life']; // Work first, everywhere
+const DNAME = { work: 'Work', life: 'Life' };
+
+// The revised Prompts from "The morning ritual", Monday first.
+const PROMPTS = [
+  'What is the one thing that must happen this week to feel real progress on this Quest?',
+  'What’s a small win from the last 24 hours that shows you’re on track?',
+  'What’s the next step that would move this Quest forward?',
+  'What’s getting in the way right now, and what will you do when it shows up?',
+  'Looking at the week so far, are your Commitments actually moving your Success Metrics?',
+  'How do you actually feel about your progress right now: energized, drained, or neutral? Why?',
+  'Looking at next week, what’s one specific change you could make to your Commitments?',
+];
+const promptFor = d => PROMPTS[(d.getDay() + 6) % 7];
+
+// The five parts under the Main Quest, in Scaffold order.
+const PARTS = [
+  { key: 'matters', name: 'Why it matters', open: 'This is the single most important thing for me to accomplish this quarter because completing it would' },
+  { key: 'metrics', name: 'Success Metrics', list: true, open: `By ${Q4.endLong}, I’ll have:` },
+  { key: 'exciting', name: 'Why it’s exciting', open: 'This feels really exciting and compelling for me because' },
+  { key: 'obstacle', name: 'Obstacle', open: 'What’s most likely to get in my way is' },
+  { key: 'commitments', name: 'Commitments', list: true, open: 'To make sure I complete the Quest, I’m going to:' },
+];
+const mainOpen = d => `My ${DNAME[d]} Main Quest is to`;
+const endP = t => (/[.!?…”"')]$/.test(t.trim()) ? '' : '.');
+const capital = t => t.charAt(0).toUpperCase() + t.slice(1);
+const present = quest => PARTS.filter(p => (p.list ? quest[p.key].length : quest[p.key]));
+
+const work1 = {
+  main: 'ship the redesigned onboarding flow to every new customer by 15 November',
+  matters: 'stop us losing a third of new sign-ups in their first week, which is the number the whole team is judged on',
+  metrics: ['the new onboarding live for 100% of new sign-ups', 'week-one drop-off below 20%, down from 34%', 'three customer interviews written up and shared with the team'],
+  exciting: 'it’s the first project I’ve led end to end, and I get to design a customer’s first ten minutes',
+  obstacle: '',
+  commitments: ['Two hours of deep work on onboarding every Monday and Wednesday morning', 'Book the three customer interviews by 16 October'],
+};
+const work2 = { ...work1, main: 'ship the redesigned onboarding flow to every new customer by 30 November' };
+const work3 = { ...work2, commitments: [...work2.commitments, 'Watch five new-customer sessions every Friday afternoon'] };
+const work4 = {
+  ...work3, main: 'get week-one drop-off below 20% with the new onboarding',
+  metrics: ['week-one drop-off below 20%, down from 34%', 'three customer interviews written up and shared with the team'],
+  commitments: ['Two hours of deep work on onboarding every Monday and Wednesday morning', 'Watch five new-customer sessions every Friday afternoon', 'Ship one drop-off fix a week until the holidays'],
+};
+const life1 = {
+  main: 'run 5K in under 25 minutes at the December parkrun',
+  matters: 'prove I can keep a promise to my own body through the busiest quarter at work',
+  metrics: ['run an official parkrun 5K in under 25:00', 'logged at least 36 runs since 1 October', 'slept 7 hours on most weeknights, by my watch'],
+  exciting: 'I’ve never thought of myself as a runner, and a fast finish would make me one',
+  obstacle: '',
+  commitments: ['Run every Tuesday, Thursday and Saturday at 6:30am', 'Sign up for the 13 December parkrun by 15 October', 'Phone out of the bedroom by 10:30pm on weeknights'],
+};
+const life2 = { ...life1, obstacle: 'late client calls that eat my evenings; when one does, I run at 6:30 the next morning' };
+
+const VERSIONS = {
+  work: [['2026-09-27', work1], ['2026-10-20', work2], ['2026-11-12', work3], ['2026-12-01', work4]],
+  life: [['2026-09-27', life1], ['2026-11-03', life2]],
+};
+const versionsAt = (d, today) => VERSIONS[d].map(([s, quest]) => ({ date: D(s), quest }))
+  .filter(v => v.date <= today).reverse();
+const versionLabel = v => (v.date < Q4.start ? `Set up ${short(v.date)} · before Day 1` : `${short(v.date)} · Day ${dayOf(v.date)}`);
+
+const SAMPLE_REFLECTIONS = [
+  ['2026-10-02', 'work', 'First week: the Monday deep-work block held. Wednesday’s didn’t.'],
+  ['2026-10-02', 'life', 'Two runs out of three. Saturday lost to a lie-in.'],
+  ['2026-10-20', 'work', 'Moved the ship date to 30 Nov. An honest date beats a heroic one.'],
+  ['2026-10-28', 'life', 'Next step: run Saturday on the parkrun course, so race day feels familiar.'],
+  ['2026-11-03', 'work', 'Interview two done. The pricing page confuses people more than onboarding does, which is its own worry.'],
+  ['2026-11-06', 'life', 'Three runs a week is happening; sleep isn’t. The 10:30 phone rule is the one I keep skipping.'],
+  ['2026-11-09', 'work', 'Finish the checklist screen. Everything else this week can slip.'],
+  ['2026-11-10', 'work', 'Drop-off in the 10% test group is 26%. Not 20 yet, but the first real dent.'],
+  ['2026-11-10', 'life', 'Ran Tuesday at 6:30 after the late call. First time the plan beat the excuse.'],
+  ['2026-11-11', 'work', 'Get the empty-state copy reviewed, so the last screen can go to 10% on Monday.'],
+  ['2026-11-11', 'life', 'Book the physio for the knee before Saturday’s long run, not after.'],
+  ['2026-12-16', 'work', 'Write up the three interviews before everyone leaves for the holidays.'],
+  ['2026-12-19', 'life', 'Energized. 24:51 at last Saturday’s parkrun. Done, and I still want to run.'],
+  ['2026-12-31', 'work', 'Onboarding shipped 27 Nov. Drop-off at 22%: close, not quite. Writing that down honestly.'],
+].map(([s, d, text]) => ({ date: D(s), d, text, prompt: promptFor(D(s)) }));
+
+// ---------------------------------------------------------------- model
+
+const freshRefl = () => ({ work: { text: '', at: null }, life: { text: '', at: null } });
+const freshView = () => ({ stack: [], page: 0, open: { work: {}, life: {} } });
+function freshState(u = new URLSearchParams(location.search)) {
+  const state = STATES[u.get('state')] ? u.get('state') : 'running';
+  const view = freshView();
+  if (['archive', 'backup', 'history'].includes(u.get('open'))) view.stack.push({ s: u.get('open'), d: 'work' });
+  if (u.get('page')) view.page = Number(u.get('page')) || 0;
+  return {
+    variant: VARIANTS[u.get('variant')] ? u.get('variant') : '1',
+    state, look: u.get('look') === 'light' ? 'light' : 'dark',
+    backup: STATES[state].backup, q1Set: false, refl: freshRefl(), view,
+  };
+}
+const withState = (s, state) => ({ ...s, state, backup: STATES[state].backup, q1Set: false, refl: freshRefl(), view: freshView(), writing: null });
+
+// Everything the screens need to know about "now".
+function where(st) {
+  const today = D(STATES[st.state].today);
+  const safari = !!STATES[st.state].safari;
+  let phase;
+  if (today < Q4.start) phase = { k: 'before', until: diff(today, Q4.start) };
+  else if (today > Q4.end) phase = { k: 'ended' };
+  else { const day = dayOf(today); phase = { k: 'running', day, left: TOTAL - day, late: diff(today, Q4.end) < 14 }; }
+  const backupAt = st.backup ? new Date(st.backup) : null;
+  const backupAge = backupAt ? diff(new Date(backupAt.getFullYear(), backupAt.getMonth(), backupAt.getDate()), today) : null;
+  return {
+    today, safari, phase,
+    canReflect: phase.k === 'running',
+    canEdit: phase.k !== 'ended',
+    prompt: phase.k === 'running' ? promptFor(today) : null,
+    backupAt, backupAge,
+    backupDue: backupAge === null || backupAge >= 7 || phase.k === 'ended',
+    quest: d => versionsAt(d, today)[0].quest,
+  };
+}
+const backupText = w => {
+  if (!w.backupAt) return 'No backup yet';
+  if (w.backupAge === 0) return `Today, ${clock(w.backupAt)}`;
+  if (w.backupAge === 1) return `Yesterday, ${clock(w.backupAt)}`;
+  return `${w.backupAge} days ago`;
+};
+const dayLine = w => (w.phase.k === 'running' ? `Day ${w.phase.day} of ${TOTAL}`
+  : w.phase.k === 'before' ? `Starts ${wd(Q4.start)} ${short(Q4.start)}` : `Ended ${wd(Q4.end)} ${short(Q4.end)}`);
+const dateLine = w => (w.phase.k === 'running' ? `${wd(w.today)} ${short(w.today)}` : dayLine(w));
+const noReflecting = w => (w.phase.k === 'before' ? `Reflections start on Day 1, ${wd(Q4.start)} ${short(Q4.start)}.`
+  : w.phase.k === 'ended' ? 'Reflecting starts again once Q1 2027 is set up.' : '');
+
+// ---------------------------------------------------------------- flows
+
+// ctx = { st, w, upd, say, ask, go, back, write }
+const stampNow = w => { const n = new Date(); const t = new Date(w.today); t.setHours(n.getHours(), n.getMinutes()); return t.toISOString(); };
+function exportFlow(ctx) {
+  const name = `cadence-backup-${STATES[ctx.st.state].today}.json`;
+  ctx.ask({
+    title: `iOS share sheet (simulated). Cadence hands it ${name}.`,
+    actions: [{ label: 'Save to Files', strong: true, run: () => { ctx.upd(s => { s.backup = stampNow(ctx.w); return s; }); ctx.say('Backup saved to Files'); } }],
+  });
+}
+function importFlow(ctx) {
+  ctx.ask({
+    title: 'Files picker (simulated). Choose a backup.',
+    actions: [{ label: 'cadence-backup-2026-11-09.json', run: () => ctx.ask({
+      title: 'Replace everything with this backup?',
+      body: html`<p><b>Backup from 9 Nov 2026, 8:02 pm</b></p>
+        <p>Q4 2026: Work and Life Quests, 5 Versions, 31 Reflections.</p>
+        <p>Everything on this iPhone is replaced, including anything written since 9 Nov. This can’t be undone.</p>`,
+      actions: [
+        { label: 'Export what’s here first', run: () => exportFlow(ctx) },
+        { label: 'Replace everything', danger: true, run: () => ctx.say('Imported the 9 Nov backup') },
+      ],
+      cancel: 'Keep what’s here',
+    }) }],
+  });
+}
+
+// ---------------------------------------------------------------- keyboard
+
+// iOS only raises the keyboard for focus() inside a tap handler. Parking focus on a hidden input during the tap
+// keeps the keyboard up while the popup renders; the popup's field then takes focus.
+const holdKeyboard = () => document.getElementById('kb-proxy').focus({ preventScroll: true });
+const isEditable = el => el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable);
+function useViewport() {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const f = () => {
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty('--kb', kb + 'px');
+      root.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+      root.style.setProperty('--vvt', Math.round(vv.offsetTop) + 'px');
+      root.classList.toggle('kb-open', kb > 60);
+    };
+    vv.addEventListener('resize', f); vv.addEventListener('scroll', f); f();
+    return () => { vv.removeEventListener('resize', f); vv.removeEventListener('scroll', f); };
+  }, []);
+}
+
+// ---------------------------------------------------------------- shared pieces
+
+// One tick per Day of the Quarter, longer at each month's start; today's tick is gold.
+function Ring({ w, size, numeral = true }) {
+  const r = size / 2;
+  const passed = w.phase.k === 'before' ? 0 : w.phase.k === 'ended' ? TOTAL : w.phase.day;
+  const isToday = i => w.phase.k === 'running' && i === passed - 1;
+  const sw = Math.max(1, size / 120);
+  const ticks = Array.from({ length: TOTAL }, (_, i) => {
+    const date = new Date(Q4.start); date.setDate(date.getDate() + i);
+    const len = size * (isToday(i) ? 0.13 : date.getDate() === 1 ? 0.085 : 0.05);
+    const a = (i / TOTAL) * 2 * Math.PI - Math.PI / 2;
+    const r1 = r - 1, r2 = r1 - len;
+    const col = isToday(i) ? 'var(--gold)' : i < passed ? 'var(--gold-dim)' : 'var(--line)';
+    return html`<line x1=${r + r1 * Math.cos(a)} y1=${r + r1 * Math.sin(a)} x2=${r + r2 * Math.cos(a)} y2=${r + r2 * Math.sin(a)}
+      stroke=${col} stroke-width=${isToday(i) ? sw * 1.8 : sw} stroke-linecap="round" />`;
+  });
+  const big = w.phase.k === 'before' ? w.phase.until : w.phase.k === 'ended' ? TOTAL : w.phase.day;
+  const small = w.phase.k === 'before' ? (w.phase.until === 1 ? 'day to go' : 'days to go') : w.phase.k === 'ended' ? 'ended' : `of ${TOTAL}`;
+  return html`<div class="ring" style=${`width:${size}px;height:${size}px`} role="img" aria-label=${dayLine(w)}>
+    <svg width=${size} height=${size} viewBox=${`0 0 ${size} ${size}`}>${ticks}</svg>
+    <div class="ring-mid">
+      <span class="ring-big" style=${`font-size:${numeral ? Math.round(size * 0.29) : 17}px`}>${big}</span>
+      ${numeral && html`<span class="ring-small">${small}</span>`}
+    </div>
+  </div>`;
+}
+
+function SafariBanner({ w }) {
+  if (!w.safari) return null;
+  return html`<div class="safari" role="alert">
+    <b>Open Cadence from your Home Screen</b>
+    <p>This Safari tab keeps its own copy, which never reaches the installed app and can be deleted after 7 days without a visit. Share, then Add to Home Screen, with Open as Web App on.</p>
+  </div>`;
+}
+
+const MenuIcon = () => html`<svg viewBox="0 0 24 24"><path d="M5 9h14M5 15h14" /></svg>`;
+const PenIcon = () => html`<svg class="pen" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /><path d="M13.5 6.5l4 4" /></svg>`;
+const Chevron = () => html`<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" /></svg>`;
+function MenuButton({ ctx, onOpen }) {
+  return html`<button type="button" class="menu-btn" aria-label="Menu" onClick=${onOpen}><${MenuIcon} />${ctx.w.backupDue && html`<i class="dot"></i>`}</button>`;
+}
+
+// The boundary states from "Quarter boundaries": one quiet line, or one action when the Quarter has ended.
+function QuarterLine({ ctx, center = true }) {
+  const { w, st } = ctx;
+  const style = center ? 'text-align:center' : '';
+  if (w.phase.k === 'ended') {
+    return html`<div style=${`display:grid;gap:6px;${center ? 'justify-items:center;text-align:center' : ''}`}>
+      <p class="line-note">Q4 2026 is over. Its Quests are kept as they were.</p>
+      <button type="button" class="primary" style="margin-top:6px" onClick=${() => ctx.go({ s: 'setup' })}>Set up Q1 2027</button>
+      <button type="button" class="gold-btn" onClick=${() => exportFlow(ctx)}>Export a backup first</button>
+    </div>`;
+  }
+  if (w.phase.k === 'running' && w.phase.late) {
+    return st.q1Set
+      ? html`<p class="line-note" style=${style}>Q1 2027 is set up. It takes over on 1 Jan.</p>`
+      : html`<p class="line-note" style=${style}>Q1 2027 starts in ${diff(w.today, Q1.start)} days. <button type="button" class="gold-btn" onClick=${() => ctx.go({ s: 'setup' })}>Set it up</button></p>`;
+  }
+  return null;
+}
+
+function MenuSheet({ ctx, close }) {
+  const { w } = ctx;
+  const count = reflectionsFor(ctx).reduce((n, g) => n + g.items.length, 0);
+  const to = scr => { close(); ctx.go(scr); };
+  return html`<div class="scrim" onClick=${close}></div>
+    <div class="bsheet" role="dialog" aria-label="Menu">
+      <div class="grab"></div>
+      <p style="font-weight:600">Q4 2026</p>
+      <p class="s faint num" style="margin-bottom:10px">${dayLine(w)}${w.phase.k === 'running' ? `, ${w.phase.left} to go` : ''}</p>
+      ${DOMAINS.map(d => html`<div class="mrow"><span>${DNAME[d]} Quest</span><span class="chips">
+        ${w.canEdit && html`<button type="button" class="chip" onClick=${() => to({ s: 'edit', d })}>Edit</button>`}
+        <button type="button" class="chip" onClick=${() => to({ s: 'history', d })}>History</button></span></div>`)}
+      <div class="mrow"><button type="button" class="wide" onClick=${() => to({ s: 'archive' })}>
+        <span>Archive</span><span class="mval">${count ? `${count} Reflections` : 'Empty'}</span></button></div>
+      <div class="mrow"><button type="button" class="wide" onClick=${() => to({ s: 'backup' })}>
+        <span>Backup</span><span class=${'mval num' + (w.backupDue ? ' due' : '')}>${backupText(w)}</span></button></div>
+    </div>`;
+}
+
+// Swipeable pages, one per Quest. The tab follows a swipe once it passes halfway.
+function usePager(ctx) {
+  const { st, upd } = ctx;
+  const ref = useRef();
+  const heading = useRef(null); // the page a tapped tab is scrolling to
+  const page = Math.min(st.view.page, DOMAINS.length - 1);
+  const setPage = i => upd(s => { s.view.page = i; return s; });
+  const goPage = i => { const el = ref.current; heading.current = i; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }); setPage(i); };
+  useLayoutEffect(() => { const el = ref.current; if (el) el.scrollLeft = page * el.clientWidth; }, []);
+  const onScroll = e => {
+    const el = e.currentTarget; const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (heading.current !== null) { if (i === heading.current) heading.current = null; return; }
+    if (i !== page) setPage(i);
+  };
+  return { ref, page, goPage, onScroll };
+}
+function TextTabs({ pager }) {
+  return html`<nav class="tabs" role="tablist">${DOMAINS.map((d, i) => html`<button type="button" role="tab" aria-selected=${i === pager.page}
+    class=${'tab' + (i === pager.page ? ' on' : '')} onClick=${() => pager.goPage(i)}>${DNAME[d]}</button>`)}</nav>`;
+}
+
+// The writing part of every popup: a draft that only reaches the Reflection on Save.
+function useDraft(ctx, d) {
+  const saved = ctx.st.refl[d].text;
+  const [text, setText] = useState(saved);
+  const changed = text.trim() !== saved;
+  const save = () => {
+    const t = text.trim();
+    ctx.upd(s => { s.refl[d] = { text: t, at: t ? new Date().toISOString() : null }; return s; });
+    ctx.write(null);
+    if (!t && saved) ctx.say(`${DNAME[d]} Reflection removed`);
+  };
+  return { text, setText, changed, save, saved, label: !text.trim() && saved ? 'Remove' : 'Save' };
+}
+function Field({ draft, ph, grow = true }) {
+  const ref = useRef();
+  useLayoutEffect(() => { ref.current.focus({ preventScroll: true }); const n = ref.current.value.length; ref.current.setSelectionRange(n, n); }, []);
+  useLayoutEffect(() => { if (!grow) return; const el = ref.current; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }, [draft.text]);
+  return html`<textarea ref=${ref} class="field" rows="4" value=${draft.text} placeholder=${ph} aria-label="Reflection"
+    autocapitalize="sentences" onInput=${e => draft.setText(e.target.value)} />`;
+}
+const midnight = 'You can change it until midnight.';
+const useLock = () => useEffect(() => { document.documentElement.classList.add('lock'); return () => document.documentElement.classList.remove('lock'); }, []);
+
+// ---------------------------------------------------------------- round 4: the Today page
+
+// 2's popup box: the Prompt, a field, Cancel and Save, centred over a blurred scrim.
+function Popup({ ctx, d }) {
+  const draft = useDraft(ctx, d);
+  useLock();
+  return html`<div class="scrim pop-scrim"></div>
+    <div class="pop-wrap" onClick=${e => { if (e.target === e.currentTarget) ctx.write(null); }}>
+      <div class="pop" role="dialog" aria-label=${`${DNAME[d]} Reflection`}>
+        <p class="s faint">${DNAME[d]}, ${wds(ctx.w.today)} ${short(ctx.w.today)}</p>
+        <p style="font-weight:600;margin-top:4px">${ctx.w.prompt}</p>
+        <${Field} draft=${draft} ph="A line or two" />
+        <div class="pop-btns">
+          <span class="s faint" style="margin-right:auto">${draft.saved ? midnight : ''}</span>
+          <button type="button" class="ghost" onClick=${() => ctx.write(null)}>Cancel</button>
+          <button type="button" class="primary" disabled=${!draft.changed} onClick=${draft.save}>${draft.label}</button>
+        </div>
+      </div>
+    </div>`;
+}
+// 3's page: the Scaffold's opening small, the Main Quest large, the rest behind one fold as 2's labelled parts.
+function QuestPage({ ctx, d }) {
+  const { st, w, upd } = ctx;
+  const quest = w.quest(d);
+  const open = !!st.view.open[d].all;
+  const r = st.refl[d];
+  const openWriter = () => { holdKeyboard(); ctx.write(d); };
+  return html`<section class="page" aria-label=${DNAME[d]}>
+    <p class="s kicker">${mainOpen(d)}</p>
+    <h2 class="mq">${quest.main}${endP(quest.main)}</h2>
+    <button type="button" class=${'toggle' + (open ? ' open' : '')} aria-expanded=${open}
+      onClick=${() => upd(s => { s.view.open[d].all = !open; return s; })}>${open ? 'Fold it away' : 'Read the whole Quest'}<${Chevron} /></button>
+    <div class=${'fold' + (open ? ' open' : '')}><div>${present(quest).map(p => html`<div class="part">
+      <p class="s faint">${p.name}</p>
+      ${p.list ? html`<ol>${quest[p.key].map(t => html`<li>${capital(t)}</li>`)}</ol>` : html`<p>${capital(quest[p.key])}${endP(quest[p.key])}</p>`}
+    </div>`)}</div></div>
+    ${!w.canReflect ? html`<p class="quiet" style="margin-top:22px">${noReflecting(w)}</p>`
+      : r.text
+        ? html`<div class="saved"><p class="txt">${r.text}</p>
+            <button type="button" class="gold-btn" onClick=${openWriter}>Edit today’s Reflection</button></div>`
+        : html`<button type="button" class="write" onClick=${openWriter}><${PenIcon} />Write today’s Reflection</button>`}
+  </section>`;
+}
+// 1's header: the big ring, today's date under it.
+function Today({ ctx }) {
+  const [menu, setMenu] = useState(false);
+  const pager = usePager(ctx);
+  const { w, st } = ctx;
+  return html`<main class="app">
+    <${SafariBanner} w=${w} />
+    <header class="top">
+      <${MenuButton} ctx=${ctx} onOpen=${() => setMenu(true)} />
+      <${Ring} w=${w} size=${164} />
+      <p class="given num">${dateLine(w)}</p>
+      <${QuarterLine} ctx=${ctx} />
+    </header>
+    <${TextTabs} pager=${pager} />
+    <div class="pager" ref=${pager.ref} onScroll=${pager.onScroll}>${DOMAINS.map(d => html`<${QuestPage} ctx=${ctx} d=${d} />`)}</div>
+    ${menu && html`<${MenuSheet} ctx=${ctx} close=${() => setMenu(false)} />`}
+    ${st.writing && html`<${Popup} ctx=${ctx} d=${st.writing} key=${st.writing} />`}
+  </main>`;
+}
+
+// ---------------------------------------------------------------- screens behind the menu
+
+function ReadBack({ quest, d }) {
+  return html`<article class="readback">
+    <p style="font-weight:600"><span class="opening" style="font-weight:400">${mainOpen(d)} </span>${quest.main}${endP(quest.main)}</p>
+    ${present(quest).map(p => (p.list
+      ? html`<div><p class="opening" style="padding:0">${p.open}</p><ol>${quest[p.key].map(t => html`<li>${t}</li>`)}</ol></div>`
+      : html`<p><span class="opening">${p.open} </span>${quest[p.key]}${endP(quest[p.key])}</p>`))}
+  </article>`;
+}
+function HistoryList({ ctx, d }) {
+  const vs = versionsAt(d, ctx.w.today);
+  return html`<ul class="hist">${vs.map((v, i) => html`<li>
+    <button type="button" class="hist-row" onClick=${() => ctx.go({ s: 'version', d, i })}>
+      <span class="s faint num">${versionLabel(v)}</span>${i === 0 && html`<b class="s">Current</b>`}
+      <span class="hist-main">${capital(v.quest.main)}</span>
+    </button></li>`)}</ul>`;
+}
+function reflectionsFor(ctx) {
+  const { st, w } = ctx;
+  const all = SAMPLE_REFLECTIONS.filter(r => r.date < w.today);
+  DOMAINS.forEach(d => { if (st.refl[d].text) all.push({ date: w.today, d, text: st.refl[d].text, prompt: w.prompt }); });
+  const days = [];
+  all.sort((a, b) => b.date - a.date || DOMAINS.indexOf(a.d) - DOMAINS.indexOf(b.d)).forEach(r => {
+    const last = days[days.length - 1];
+    if (last && same(last.date, r.date)) last.items.push(r); else days.push({ date: r.date, prompt: r.prompt, items: [r] });
+  });
+  return days;
+}
+function ArchiveFeed({ ctx }) {
+  const days = reflectionsFor(ctx);
+  if (!days.length) return html`<p class="quiet" style="padding:24px 0">No Reflections yet. The first can be written on Day 1, ${wd(Q4.start)} ${short(Q4.start)}.</p>`;
+  return html`<div>${days.map(g => html`<section class="feed-day">
+    <p class="num"><b>${wds(g.date)} ${short(g.date)}</b> <span class="faint">Day ${dayOf(g.date)}</span></p>
+    <p class="s faint" style="margin-top:2px">${g.prompt}</p>
+    ${g.items.map(r => html`<div class="feed-item"><p class="s given" style="font-weight:600">${DNAME[r.d]}</p><p class="feed-text">${r.text}</p></div>`)}
+  </section>`)}</div>`;
+}
+function BackupPanel({ ctx }) {
+  const { w } = ctx;
+  return html`<div>
+    <div class="stat"><span class="s faint">Last backup</span><span class="num">${w.backupAt ? `${backupText(w)}${w.backupAge > 1 ? `, ${short(w.backupAt)}` : ''}` : 'No backup yet'}</span></div>
+    <div class="stat"><span class="s faint">Storage</span><span>${w.safari
+      ? 'Safari tab: can be cleared after 7 days without a visit'
+      : 'On this iPhone, marked persistent: iOS won’t clear it to free up space'}</span></div>
+    <div class="btns">
+      <button type="button" class="primary" onClick=${() => exportFlow(ctx)}>Export backup</button>
+      <button type="button" class="ghost" onClick=${() => importFlow(ctx)}>Import</button>
+    </div>
+    <p class="s faint" style="margin-top:22px">A backup is one file holding every Quarter, Version and Reflection. Export one before deleting Cadence from the Home Screen: that deletes its data.</p>
+  </div>`;
+}
+function NavHead({ left, onLeft, title, sub, right, rightOff }) {
+  return html`<header class="navhead">
+    <button type="button" class="navbtn" onClick=${onLeft}>${left}</button>
+    <div class="navtitle">${title}${sub && html`<span class="navsub">${sub}</span>`}</div>
+    ${right ? html`<button type="button" class="navbtn strong" disabled=${rightOff}>${right}</button>` : html`<span />`}
+  </header>`;
+}
+function Pushed({ ctx, scr }) {
+  const { w } = ctx;
+  if (scr.s === 'edit') {
+    return html`<div class="pushed">
+      <${NavHead} left="Cancel" onLeft=${ctx.back} title=${`Edit ${DNAME[scr.d]} Quest`} sub="No changes yet" right="Save" rightOff=${true} />
+      <div style="margin-top:12px"><${ReadBack} quest=${w.quest(scr.d)} d=${scr.d} /></div>
+      <p class="proto-note">Stand-in. Editing is decided: variant A of Prototype: writing a Quest (tap a part to change it on its own screen). This only shows where Edit is reached from.</p>
+    </div>`;
+  }
+  if (scr.s === 'setup') {
+    return html`<div class="pushed">
+      <${NavHead} left="Cancel" onLeft=${ctx.back} title="Set up Q1 2027" />
+      <p class="given" style="margin-top:20px">Q1 2027 · ${short(Q1.start)} – ${short(Q1.end)}</p>
+      <p class="proto-note">Stand-in. Setup runs as in Prototype: writing a Quest, from a blank Scaffold: Work first, then Life, then “Q1 2027 is set up”.</p>
+      <button type="button" class="primary" style="margin-top:16px" onClick=${() => {
+        ctx.back();
+        if (w.phase.k === 'ended') ctx.say('Cadence would now open on Q1 2027, Day 2 of 90');
+        else { ctx.upd(s => { s.q1Set = true; return s; }); ctx.say('Q1 2027 is set up'); }
+      }}>Pretend both Quests are finished</button>
+    </div>`;
+  }
+  if (scr.s === 'version') {
+    const v = versionsAt(scr.d, w.today)[scr.i];
+    return html`<div class="pushed">
+      <${NavHead} left="‹ History" onLeft=${ctx.back} title=${versionLabel(v)} sub=${scr.i === 0 ? 'Current' : 'Read-only'} />
+      <div style="margin-top:12px"><${ReadBack} quest=${v.quest} d=${scr.d} /></div>
+    </div>`;
+  }
+  const title = scr.s === 'history' ? `${DNAME[scr.d]} History` : scr.s === 'archive' ? 'Archive' : 'Backup';
+  return html`<div class="pushed">
+    <${NavHead} left="‹ Today" onLeft=${ctx.back} title="" />
+    <h1 class="h1">${title}</h1>
+    ${scr.s === 'history' && html`<p class="given">How this Quest changed across Q4 2026, newest first.</p><${HistoryList} ctx=${ctx} d=${scr.d} />`}
+    ${scr.s === 'archive' && html`<${ArchiveFeed} ctx=${ctx} />`}
+    ${scr.s === 'backup' && html`<${BackupPanel} ctx=${ctx} />`}
+  </div>`;
+}
+
+// ---------------------------------------------------------------- shell
+
+function Sheet({ c, close }) {
+  return html`<div class="as-wrap" onClick=${close}>
+    <div class="action-sheet" role="dialog" aria-label=${c.title} onClick=${e => e.stopPropagation()}>
+      <div class="as-group">
+        ${c.title && html`<p class="as-title">${c.title}</p>`}
+        ${c.body && html`<div class="as-body">${c.body}</div>`}
+        ${c.actions.map(a => html`<button type="button" class=${'as-btn' + (a.danger ? ' danger' : '') + (a.strong ? ' strong' : '')}
+          onClick=${() => { close(); if (a.run) a.run(); }}>${a.label}</button>`)}
+      </div>
+      <div class="as-group"><button type="button" class="as-btn strong" onClick=${close}>${c.cancel || 'Cancel'}</button></div>
+    </div>
+  </div>`;
+}
+
+function ProtoStrip({ st, upd, cycle }) {
+  const [panel, setPanel] = useState(false);
+  return html`<div class="proto">
+    <div class="proto-row">
+      <button type="button" class="proto-arrow" aria-label="Previous variant" onClick=${() => cycle(-1)}>‹</button>
+      <button type="button" class="proto-label" aria-expanded=${panel} onClick=${() => setPanel(!panel)}>
+        <b>${st.variant}</b> ${VARIANTS[st.variant]}<span class="proto-chip">${STATES[st.state].label}</span></button>
+      <button type="button" class="proto-arrow" aria-label="Next variant" onClick=${() => cycle(1)}>›</button>
+    </div>
+    ${panel && html`<div class="proto-panel">
+      <p class="proto-k">Pretend it’s…</p>
+      <div class="proto-seg">${Object.entries(STATES).map(([k, v]) => html`<button type="button" aria-pressed=${st.state === k}
+        onClick=${() => { upd(s => withState(s, k)); window.scrollTo(0, 0); }}>${v.label}</button>`)}</div>
+      <p class="proto-k">Look</p>
+      <div class="proto-seg">${['dark', 'light'].map(k => html`<button type="button" aria-pressed=${st.look === k}
+        onClick=${() => upd(s => { s.look = k; return s; })}>${k === 'dark' ? 'Dark' : 'Light'}</button>`)}</div>
+      <p>Round 4: 1’s ring, 3’s page and Reflect link, 2’s labelled details and popup. The arrows switch the Main Quest’s typeface. Day 43 and Backup overdue are Thu 12 Nov. Before Day 1 is Mon 28 Sep. Last 14 days is Sun 20 Dec. Quarter ended is Sat 2 Jan, with Q1 2027 not set up. Changing the date resets anything you wrote.</p>
+    </div>`}
+  </div>`;
+}
+
+function App() {
+  const [st, setSt] = useState(freshState);
+  const upd = fn => setSt(s => fn(structuredClone(s)));
+  const [toast, say] = useState(null);
+  const [asking, ask] = useState(null);
+  useViewport();
+  const w = where(st);
+  const go = scr => { document.activeElement?.blur?.(); upd(s => { s.view.stack.push(scr); return s; }); window.scrollTo(0, 0); };
+  const back = () => { upd(s => { s.view.stack.pop(); return s; }); window.scrollTo(0, 0); };
+  const write = d => { if (!d) document.activeElement?.blur?.(); upd(s => { s.writing = d; return s; }); };
+  const ctx = { st, w, upd, say, ask, go, back, write };
+  useEffect(() => {
+    document.documentElement.dataset.look = st.look;
+    document.documentElement.dataset.font = st.variant;
+    document.querySelector('meta[name=theme-color]').content = st.look === 'light' ? '#F4F5F7' : '#0F1113';
+  }, [st.look, st.variant]);
+  useEffect(() => {
+    const u = new URL(location.href);
+    u.searchParams.set('variant', st.variant); u.searchParams.set('state', st.state); u.searchParams.set('look', st.look);
+    u.searchParams.delete('open'); u.searchParams.delete('page');
+    history.replaceState(null, '', u);
+  }, [st.variant, st.state, st.look]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => say(null), 2600); return () => clearTimeout(t); }, [toast]);
+  const cycle = dir => { document.activeElement?.blur?.(); upd(s => { const k = VKEYS.indexOf(s.variant); s.variant = VKEYS[(k + dir + VKEYS.length) % VKEYS.length]; s.writing = null; return s; }); window.scrollTo(0, 0); };
+  useEffect(() => {
+    const f = e => {
+      if (isEditable(document.activeElement)) return;
+      if (e.key === 'ArrowRight') cycle(1);
+      if (e.key === 'ArrowLeft') cycle(-1);
+    };
+    addEventListener('keydown', f);
+    return () => removeEventListener('keydown', f);
+  }, []);
+  const top = st.view.stack[st.view.stack.length - 1];
+  return html`
+    <${ProtoStrip} st=${st} upd=${upd} cycle=${cycle} />
+    ${top
+      ? html`<main class="app"><${Pushed} ctx=${ctx} scr=${top} key=${st.view.stack.length} /></main>`
+      : html`<${Today} ctx=${ctx} key=${st.state} />`}
+    ${toast && html`<div class="toast" role="status">${toast}</div>`}
+    ${asking && html`<${Sheet} c=${asking} close=${() => ask(null)} />`}`;
+}
+
+render(html`<${App} />`, document.getElementById('root'));
+</script>
+</body>
+</html>

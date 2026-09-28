@@ -388,7 +388,7 @@ const store = createStore('cadence', 'kv')   // not the shared default 'keyval-s
 6. **iOS polish checklist for the build tickets:**
    - real icons: an opaque 180×180 apple-touch-icon plus 192/512 manifest icons (maskable optional)
    - `viewport-fit=cover` + safe-area padding (fixes the audit's "safe areas inert")
-   - status bar `black-translucent` (or `black`)
+   - ~~status bar `black-translucent` (or `black`)~~ Superseded: no status-bar-style tag, plus `theme-color` per appearance ([ios-status-bar-appearance.md](ios-status-bar-appearance.md), [spec.md](../spec.md) §2.4)
    - dark `html`/`body` background
    - splash images deferred until seen on device
 7. **Use a namespaced IndexedDB store** (`createStore('cadence', 'kv')`) so Safari-tab and desktop testing can't collide with another project on the same origin.

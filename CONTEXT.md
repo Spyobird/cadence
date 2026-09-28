@@ -32,6 +32,10 @@ _Avoid_: Goal, objective
 The fixed first-person sentence openings ("My Life Main Quest is to …") that a Quest is written by completing, so that it reads back as a short vision statement.
 _Avoid_: Template, form
 
+**Setup**:
+Writing a Quarter's two Quests for the first time, Work then Life. A Quest is finished once it's first saved whole; a Quarter is set up once both are finished. Until then, Cadence reopens on setup.
+_Avoid_: Onboarding
+
 **Version**:
 A Quest as it stood after being saved on a Day. The first is made when the Quest is first finished; drafts are never Versions. A Quest has at most one Version per Day, so saving again that Day replaces it. Before Day 1 there is only one, and later saves replace it.
 _Avoid_: Revision, snapshot, pivot

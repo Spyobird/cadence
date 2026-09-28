@@ -14,7 +14,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
   - Hosting is a public repo `cadence` on GitHub Pages at `spyobird.github.io/cadence/`.
   - `DESIGN.md`'s "Precision Chronometer" is a starting point, not a contract. UX and seamlessness beat colour; creative latitude is welcome.
 - **v1 scope (settled 2026-09-27):**
-  - Installable with a real icon and proper iOS chrome.
+  - Installable with a real icon and proper iOS chrome, in light and dark ([v1 spec & build order](issues/10-v1-spec-and-build-order.md)).
   - Hardened data layer that knows about Quarters.
   - Quarter setup.
   - Today screen: the Quests to re-read, with the day's Prompt and optional Reflections.
@@ -36,6 +36,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
   - Build tickets (after this map): `tdd`.
   - `CLAUDE.md` requires Context7 for any library API.
 - **Tracker:** local markdown (no git remote yet). Research findings live in `research/` next to this map, not on research branches, because the working tree holds uncommitted work.
+- **Map complete (2026-09-29):** every decision ticket is resolved. The build is worked from [build/](build/), in order, with the `tdd` skill.
 
 ## Decisions so far
 
@@ -50,10 +51,11 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [Prototype: writing a Quest](issues/07-prototype-writing-a-quest.md): variant A for setup and editing: one Scaffold part per screen, then a read-back where you tap a part to change it. Work comes before Life everywhere. Return is Next, the keyboard stays up, and drafts survive the app closing. The Obstacle hint is now a question.
 - [Prototype: the Today screen & app shell](issues/08-prototype-morning-screen.md): the ring on top, then one page per Quest (Work first). Each page shows the Main Quest, the rest folded under "Read the whole Quest", and a "Write today's Reflection" link that opens a popup. One menu holds Edit, History, Archive and Backup. Dark look, three type sizes, and the Main Quest in bundled Plus Jakarta Sans ExtraBold.
 - [Data layer & storage schema](issues/09-data-layer.md): one key per Quarter holds its Versions and Reflections, and Drafts and `meta` have their own keys. `store.ts` is the only code that touches IndexedDB and it enforces every rule; `quarters.ts` does the date maths, and one `useCadence()` hook serves the UI. A save carries the date it's saved on. A failed save retries once, then blocks with the text kept. The Backup is every key, Drafts included, and import checks the whole file before replacing everything in one transaction. Drafts left when their Quarter ends are frozen with it.
+- [v1 spec & build order](issues/10-v1-spec-and-build-order.md): [spec.md](spec.md) is the standalone v1 spec, and [DESIGN.md](../../DESIGN.md), four ADRs and ten build tickets in [build/](build/) sit alongside it. Slices 1–4 get Cadence into daily use, 5–6 make it data-safe, and 7–10 complete it. Light mode is in, with a System / Light / Dark control that the first phone check proves or drops. `black-translucent` is out. Phone checks run at four milestones. The changelog stays under `[Unreleased]` until the owner says to tag.
 
 ## Not yet specified
 
-- **On-device verification:** launch appearance without splash images, whether an update applies on resume, and status-bar behaviour on iOS 26. Can't be pinned down until something is deployed at the real origin; may graduate into build tickets.
+Nothing: the way is clear. The last fog, on-device verification (how launch looks, updates on resume, the status bar), became the phone check in [Installable skeleton at the real address](build/01-installable-skeleton.md). Build from [spec.md](spec.md) and the tickets in [build/](build/).
 
 ## Out of scope
 
