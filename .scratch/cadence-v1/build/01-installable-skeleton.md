@@ -45,8 +45,8 @@ Cadence installs from `https://spyobird.github.io/cadence/` on the iPhone. It ru
 
 ## Done when
 
-- [ ] `npm ci && tsc --noEmit && npm test -- --run && npm run build` pass on Node 24, locally and in Actions.
-- [ ] `https://spyobird.github.io/cadence/` serves the placeholder, with its build stamp.
+- [x] `npm ci && tsc --noEmit && npm test -- --run && npm run build` pass on Node 24, locally and in Actions.
+- [x] `https://spyobird.github.io/cadence/` serves the placeholder, with its build stamp.
 - [ ] The owner has run the head and install checks (§15.2, steps 1–10). The results, with the iOS version, are recorded under `## Phone check` in this ticket.
 - [ ] Recorded: whether the in-app Appearance control stays (step 5), and whether splash images are needed (step 8). Any fix they need is a new build ticket, blocking slice 4.
 - [ ] If the head changed after the first install, the owner has re-added the icon.
