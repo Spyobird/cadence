@@ -48,10 +48,10 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [The morning ritual](issues/05-morning-ritual.md): not a ritual. Opening Cadence is a casual re-read of both Quests at any time of day, and it leaves no record. There is an optional Reflection per Quest per Day, editable until midnight, with no backfill. The weekday Prompt is only a thinking aid. All seven Prompts were revised to work at any hour.
 - [What a Quest version is](issues/06-quest-versions.md): the History is a read-only record, with no restore, note or pivot flag. Version 1 is made at finish. After that, at most one Version per Day (same-Day saves replace it), and everything before Day 1 is Version 1. History rows show date, Day and Main Quest. Reflections don't store a Version.
 - [Prototype: writing a Quest](issues/07-prototype-writing-a-quest.md): variant A for setup and editing: one Scaffold part per screen, then a read-back where you tap a part to change it. Work comes before Life everywhere. Return is Next, the keyboard stays up, and drafts survive the app closing. The Obstacle hint is now a question.
+- [Prototype: the Today screen & app shell](issues/08-prototype-morning-screen.md): the ring on top, then one page per Quest (Work first). Each page shows the Main Quest, the rest folded under "Read the whole Quest", and a "Write today's Reflection" link that opens a popup. One menu holds Edit, History, Archive and Backup. Dark look, three type sizes, and the Main Quest in bundled Plus Jakarta Sans ExtraBold.
 
 ## Not yet specified
 
-- **Visual system detail:** typography (self-hosted fonts for offline), colour tuning (Steel-Gray contrast), and how much motion earns its place. The writing prototype proposes grey system sans for the Scaffold, the system serif for the owner's words, and gold only for the caret and the primary action; not yet confirmed. Graduates once the Today prototype sets the rest of the visual language.
 - **On-device verification:** launch appearance without splash images, whether an update applies on resume, and status-bar behaviour on iOS 26. Can't be pinned down until something is deployed at the real origin; may graduate into build tickets.
 
 ## Out of scope

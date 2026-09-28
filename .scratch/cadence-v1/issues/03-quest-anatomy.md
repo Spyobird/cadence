@@ -92,3 +92,5 @@ Why these parts: the scaffold was sound: one specific aim, two separate whys (th
 - A done one-off Commitment is edited out (a new version; the history keeps it). No ticking.
 
 **Superseded (2026-09-28):** the Obstacle hint's "…, and when it does, I'll …" nudge was dropped as too cheesy. The hint is now a question, and Work comes before Life. See [Prototype: writing a Quest](07-prototype-writing-a-quest.md).
+
+**Superseded (2026-09-28):** Today no longer shows both whole Quests. It shows one Quest per page: the Main Quest under its Scaffold opening, with the other parts folded under "Read the whole Quest". See [Prototype: the Today screen & app shell](08-prototype-morning-screen.md).

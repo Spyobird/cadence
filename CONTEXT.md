@@ -48,6 +48,18 @@ _Avoid_: Check-in, entry, journal
 The question of the day, one per weekday and shared by both Quests. It is a thinking aid for a Reflection, not a question that must be answered.
 _Avoid_: Question, daily prompt
 
+**Today**:
+The screen Cadence opens on: the day's ring, then one page per Quest, each showing its Main Quest with the rest folded away, and that Quest's Reflection for the day.
+_Avoid_: Dashboard, home, morning screen
+
+**Archive**:
+Every Reflection, newest Day first, grouped by Day under that Day's Prompt.
+_Avoid_: Reflection log, journal
+
+**Backup**:
+One file holding every Quarter, Version and Reflection, exported to Files and importable to replace everything on the phone.
+_Avoid_: Export, snapshot
+
 ### Parts of a Quest
 
 **Main Quest**:
