@@ -36,6 +36,10 @@ _Avoid_: Template, form
 A Quest as it stood after being saved on a Day. The first is made when the Quest is first finished; drafts are never Versions. A Quest has at most one Version per Day, so saving again that Day replaces it. Before Day 1 there is only one, and later saves replace it.
 _Avoid_: Revision, snapshot, pivot
 
+**Draft**:
+A Quest's unsaved words: during setup until the Quest is finished, or during an edit until Save or discard. It survives the app closing, and it never shows on Today or in the History. A Draft left when its Quarter ends is kept as it stands and never resumed.
+_Avoid_: Work in progress, unsaved version
+
 **History**:
 A Quest's Versions, newest first: a read-only record of how the Quest changed across its Quarter.
 _Avoid_: Evolution Lab, changelog
@@ -57,7 +61,7 @@ Every Reflection, newest Day first, grouped by Day under that Day's Prompt.
 _Avoid_: Reflection log, journal
 
 **Backup**:
-One file holding every Quarter, Version and Reflection, exported to Files and importable to replace everything on the phone.
+One file holding every Quarter, Version, Reflection and Draft, exported to Files and importable to replace everything on the phone.
 _Avoid_: Export, snapshot
 
 ### Parts of a Quest
