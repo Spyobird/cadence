@@ -50,3 +50,26 @@ Cadence installs from `https://spyobird.github.io/cadence/` on the iPhone. It ru
 - [ ] The owner has run the head and install checks (§15.2, steps 1–10). The results, with the iOS version, are recorded under `## Phone check` in this ticket.
 - [ ] Recorded: whether the in-app Appearance control stays (step 5), and whether splash images are needed (step 8). Any fix they need is a new build ticket, blocking slice 4.
 - [ ] If the head changed after the first install, the owner has re-added the icon.
+
+## Build notes
+
+- **Icon:** the owner chose draft A, the Quarter in progress ([DESIGN.md](../../../DESIGN.md#icon)).
+- **Update reload:** a new version reloads the page as soon as it's visible and nothing is being written. On a resume that finds an update, that's a moment after reopening, so check step 9 needs one reopen.
+- **Placeholder extras:** besides the two temporary pieces, a list of 40 rows gives check step 6 a long page to scroll. It goes with them in slice 4.
+
+## Phone check
+
+iOS version:
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Installs from Share → Add to Home Screen; icon and name "Cadence" | |
+| 2 | Light: strip `#F4F5F7`, dark glyphs | |
+| 3 | Dark: strip `#0F1113`, light glyphs | |
+| 4 | Control Centre flip while open: strip follows without relaunch? | |
+| 5 | Placeholder switch (Light on a Dark phone, and the reverse): strip follows? **Decides whether the in-app control stays.** | |
+| 6 | Scroll the rows: nothing blurs at the top, nothing under the strip | |
+| 7 | `100dvh` fills with no bottom gap; build stamp clears the home indicator. Readout: inset top / innerHeight / screen.height | |
+| 8 | Launch without splash images, light and dark: what shows before first paint? **Decides whether splash images are needed.** | |
+| 9 | Push a trivial change, wait for the deploy, reopen from the app switcher: build stamp changes | |
+| 10 | Safari tab shows the red banner; Home Screen doesn't | |

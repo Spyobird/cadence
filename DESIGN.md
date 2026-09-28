@@ -16,7 +16,8 @@ It replaces the "Precision Chronometer" draft: the rhythm strip, the monospace u
 
 Two looks, **dark** and **light**, chosen by the **Appearance** control in the menu: System (the default, following the iPhone), Light or Dark.
 
-- Every colour is a token. Components never use a raw colour code.
+- Every colour is a token. Components never use a raw colour code: `src/index.css` defines the tokens below and removes Tailwind's own palette.
+- System follows the phone's `prefers-color-scheme`. Light or Dark sets `data-look` on `<html>`, which fixes `color-scheme`, and rewrites both `theme-color` tags to that look's `--void` (`src/lib/appearance.ts`).
 - The status bar is a solid strip in the page's background colour; nothing is drawn under it ([research](.scratch/cadence-v1/research/ios-status-bar-appearance.md)). Sticky headers use a solid `--void` background, not glass or a gradient.
 
 ## Colour tokens
@@ -113,4 +114,7 @@ One easing: `cubic-bezier(.2, .8, .2, 1)`. Nothing moves on its own, and everyth
 
 ## Icon
 
-The day ring, gold on `--void` (dark). The 180 × 180 `apple-touch-icon` is opaque. The owner picks from 2–3 drafts in the first build slice.
+The day ring, gold on `--void` (dark), drawn as the Quarter in progress: passed Days in `--gold-dim`, today's tick longer and in `--gold`, the rest in `--line`, with longer ticks at each month's start. The owner chose it (draft A) from three drafts in build slice 1; the drafts and the script that draws them are in [.scratch/cadence-v1/icons/](.scratch/cadence-v1/icons/).
+
+- **Source:** `public/icon.svg`, a full-bleed, opaque square with no padding. iOS rounds the corners.
+- **Files:** `npm run icons` (the vite-pwa assets generator, `pwa-assets.config.ts`) makes the 180 × 180 `apple-touch-icon`, the 64, 192 and 512 manifest icons and `favicon.ico`. They're committed.
