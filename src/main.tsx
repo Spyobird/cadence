@@ -1,18 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import { askToPersist } from './lib/launch'
+import { keepUpToDate } from './lib/updates'
 import './index.css'
 
-import { registerSW } from 'virtual:pwa-register'
+keepUpToDate()
+askToPersist()
 
-registerSW({
-  onOfflineReady() {
-    console.log('PWA ready for offline use')
-  }
-})
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
     <App />
-  </React.StrictMode>,
+  </StrictMode>,
 )
