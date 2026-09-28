@@ -1,15 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Cadence">
-    <link rel="apple-touch-icon" href="/pwa-192x192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F5F7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F1113" />
+    <meta name="apple-mobile-web-app-title" content="Cadence" />
+    <meta name="description" content="Two Quests a Quarter, and a place to reflect on them" />
+    <!-- No apple-mobile-web-app-status-bar-style: the status bar is a solid strip in the page's colour (spec §2.4) -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" sizes="180x180" />
     <title>Cadence</title>
     <style>
-      body { background-color: #0F1113; }
+      /* First paint, before the stylesheet loads: --void, matching theme-color */
+      html, body { background-color: #F4F5F7; }
+      @media (prefers-color-scheme: dark) { html, body { background-color: #0F1113; } }
     </style>
   </head>
   <body>

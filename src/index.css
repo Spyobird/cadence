@@ -1,3 +1,82 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source('.');
+
+/*
+ * Colour tokens for both looks (DESIGN.md). light-dark() picks by color-scheme:
+ * System follows the phone; data-look="light" or "dark" fixes one.
+ */
+:root {
+  color-scheme: light dark;
+  --void: light-dark(#F4F5F7, #0F1113);
+  --surface: light-dark(#FFFFFF, #181B1F);
+  --raise: light-dark(#E9EBEF, #23272C);
+  --line: light-dark(#E0E3E8, #262A30);
+  --ink: light-dark(#15171A, #EEE9DF);
+  --given: light-dark(#4A525C, #A0A7B2);
+  --faint: light-dark(#5F6875, #7F8794);
+  --gold: light-dark(#C9A227, #D4AF37);
+  --gold-text: light-dark(#7A5F00, #D4AF37);
+  --gold-dim: light-dark(#DCC883, #5E5126);
+  --on-gold: #17140A;
+  --danger: light-dark(#C0392B, #FF7A66);
+  --on-danger: light-dark(#FFFFFF, #1A0703);
+}
+:root[data-look='light'] {
+  color-scheme: light;
+}
+:root[data-look='dark'] {
+  color-scheme: dark;
+}
+
+/* Only these colours exist: components can't reach for a raw one */
+@theme inline {
+  --color-*: initial;
+  --color-void: var(--void);
+  --color-surface: var(--surface);
+  --color-raise: var(--raise);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-given: var(--given);
+  --color-faint: var(--faint);
+  --color-gold: var(--gold);
+  --color-gold-text: var(--gold-text);
+  --color-gold-dim: var(--gold-dim);
+  --color-on-gold: var(--on-gold);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+
+  --font-sans: -apple-system, system-ui, sans-serif;
+  --font-serif: ui-serif, 'New York', Georgia, serif;
+
+  /* Three sizes (DESIGN.md) */
+  --text-*: initial;
+  --text-s: 13px;
+  --text-s--line-height: 18px;
+  --text-m: 17px;
+  --text-m--line-height: 24px;
+  --text-l: 28px;
+  --text-l--line-height: 34px;
+}
+
+/* A 22 px side gutter, or the safe-area inset if that's larger */
+@utility px-gutter {
+  padding-left: max(22px, env(safe-area-inset-left));
+  padding-right: max(22px, env(safe-area-inset-right));
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: max(22px, env(safe-area-inset-bottom));
+}
+
+html,
+body {
+  background-color: var(--void);
+  color: var(--ink);
+}
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-m);
+  line-height: var(--text-m--line-height);
+  -webkit-text-size-adjust: 100%;
+}
