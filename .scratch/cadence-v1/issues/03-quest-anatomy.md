@@ -39,7 +39,7 @@ Why these parts: the scaffold was sound: one specific aim, two separate whys (th
 - **Text:** every part and list item is a single line of prose, with no line breaks and no length cap.
 - **Tracking:** nothing is tracked in v1. Success Metrics and Commitments are text to re-read. Progress lives in reflections. A done one-off Commitment is edited out (a new version; the history keeps it).
 - **Quarter end:** no verdict or score in v1. A verdict belongs to the post-v1 rollover flow. A past Quarter's Quests stay intact.
-- **Morning re-read:** the whole Quest, with the Main Quest as headline. Layout belongs to [Prototype: the morning screen & app shell](08-prototype-morning-screen.md), and whether reading or writing leads belongs to [The morning ritual](05-morning-ritual.md).
+- **Morning re-read:** the whole Quest, with the Main Quest as headline. Layout belongs to [Prototype: the Today screen & app shell](08-prototype-morning-screen.md), and whether reading or writing leads belongs to [The morning ritual](05-morning-ritual.md).
 
 **Prompts to find it:** these come from the owner's fuller scaffold. They are shown while writing the Main Quest, as thinking aids only; answers are not saved. `{end}` replaces "New Year's Eve".
 

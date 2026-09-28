@@ -32,6 +32,14 @@ _Avoid_: Goal, objective
 The fixed first-person sentence openings ("My Life Main Quest is to …") that a Quest is written by completing, so that it reads back as a short vision statement.
 _Avoid_: Template, form
 
+**Reflection**:
+An optional note about one Quest, written on a Day. There is at most one per Quest per Day, and it can be changed only on its own Day.
+_Avoid_: Check-in, entry, journal
+
+**Prompt**:
+The question of the day, one per weekday and shared by both Quests. It is a thinking aid for a Reflection, not a question that must be answered.
+_Avoid_: Question, daily prompt
+
 ### Parts of a Quest
 
 **Main Quest**:

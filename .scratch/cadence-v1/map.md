@@ -17,13 +17,13 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
   - Installable with a real icon and proper iOS chrome.
   - Hardened data layer that knows about Quarters.
   - Quarter setup.
-  - Morning screen with the daily prompt.
+  - Today screen: the Quests to re-read, with the day's Prompt and optional Reflections.
   - Quest view/edit, with every save kept as a version, plus a simple history list.
   - Quarter-progress ring.
   - Plain Archive feed.
   - Backup export **and** import; import is in so the round trip can be proven on the device.
   - A warning when Cadence is opened in a Safari tab.
-- **Owner's framing:** the session happens in the morning. Cadence may be less a check-in than a vision statement re-read to stay on track, which the owner called "the stronger goal". This framing leads [The morning ritual](issues/05-morning-ritual.md). The owner wants to go deep on the Quests first.
+- **Owner's framing:** Cadence is a vision statement to re-read casually, at any time of day. It is not a ritual and not a check-in. Keep it simple ([The morning ritual](issues/05-morning-ritual.md)).
 - **Standing rules for the owner:**
   - Export before any origin change (custom domain on `spyobird.github.io`, account or repo rename, new host).
   - Never delete the Home Screen icon without a fresh export.
@@ -45,6 +45,7 @@ A decided v1 spec for Cadence, sliced into ordered build tickets ready for TDD s
 - [GitHub Pages + PWA setup for iOS install](issues/02-github-pages-pwa-setup.md): `base: '/cadence/'`. Fix the update path (it never auto-applies today). Upgrade to Vite 8 / vite-plugin-pwa 1.3 / vitest 4.1 on Node 24. Official Actions deploy. 180px opaque touch icon + `viewport-fit=cover`. Namespaced IDB store. Origin is permanent.
 - [What a Quest is made of](issues/03-quest-anatomy.md): six single-line Scaffold parts, with a new optional Obstacle and reworded metrics. Lists hold 1–5 items. Nothing tracked. The morning re-read shows the whole Quest. "Prompts to find it" are thinking aids.
 - [Quarter boundaries](issues/04-quarter-boundaries.md): setup targets the current Quarter, or the upcoming one in the last 14 days, with a one-tap switch. Day N counts from the calendar Quarter's start. A Quarter is set up once both Quests are finished. Reflecting happens only on a Day of a set-up Quarter. Past Quarters are read-only and not browsable in v1. v1 offers plain setup of the next Quarter.
+- [The morning ritual](issues/05-morning-ritual.md): not a ritual. Opening Cadence is a casual re-read of both Quests at any time of day, and it leaves no record. There is an optional Reflection per Quest per Day, editable until midnight, with no backfill. The weekday Prompt is only a thinking aid. All seven Prompts were revised to work at any hour.
 
 ## Not yet specified
 

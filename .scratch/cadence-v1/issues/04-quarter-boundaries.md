@@ -30,7 +30,7 @@ Terms are in [CONTEXT.md](../../../CONTEXT.md): **Current Quarter**, **Upcoming 
 1. **Nothing set up:** setup.
 2. **Setup started, not finished:** setup, resumed.
 3. **Set up, before Day 1** (Q4 set up on 27 Sep): the Quests, readable and editable, with "Starts in 4 days" and an empty ring. No reflecting until Day 1.
-4. **Current Quarter running:** the normal morning screen. From 18 Dec, "Set up Q1 2027" is also offered. If the Upcoming Quarter gets set up early, the screen stays on Q4 until 31 Dec and switches to Q1 2027 on 1 Jan.
+4. **Current Quarter running:** the normal Today screen. From 18 Dec, "Set up Q1 2027" is also offered. If the Upcoming Quarter gets set up early, the screen stays on Q4 until 31 Dec and switches to Q1 2027 on 1 Jan.
 5. **Quarter ended, next not set up** (1 Jan with no Q1 2027): the ended Quarter's Quests, read-only, plus "Set up Q1 2027". No reflecting until the new Quarter is set up.
 
 **Setting up the next Quarter in v1** is the same plain setup: a blank Scaffold, with no review, verdict or carry-over. That full rollover flow stays post-v1.
@@ -47,7 +47,7 @@ Terms are in [CONTEXT.md](../../../CONTEXT.md): **Current Quarter**, **Upcoming 
 
 - [What a Quest version is](06-quest-versions.md): do edits made before Day 1 create versions, or amend in place? No version can be added to a Past Quarter.
 - [Prototype: writing a Quest](07-prototype-writing-a-quest.md): the target line and switch at the top of setup; resuming an unfinished setup; the same flow serves "Set up Q1 2027".
-- [Prototype: the morning screen & app shell](08-prototype-morning-screen.md): screens for states 3–5 above ("Starts in N days", "Set up Q1 2027" from 18 Dec, the ended state).
+- [Prototype: the Today screen & app shell](08-prototype-morning-screen.md): screens for states 3–5 above ("Starts in N days", "Set up Q1 2027" from 18 Dec, the ended state).
 - [Data layer & storage schema](09-data-layer.md): a Quarter is keyed by calendar quarter (e.g. `2026-Q4`), and more than one can exist at once (a Past Quarter, the current one, and one set up ahead). Reflections belong to the Quarter containing their date. "Finished" is a stored state. Writes to a Past Quarter are refused.
 
 ## Comments
