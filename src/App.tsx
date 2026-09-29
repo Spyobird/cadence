@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
+import { Backup } from './components/Backup'
 import { Setup } from './components/Setup'
 import { Today } from './components/Today'
 import { CadenceContext, useCadence } from './hooks/useCadence'
@@ -24,8 +25,17 @@ function Screens() {
   // Finishing Life moves screenFor on, but setup stays on screen with "Q4 2026 is set up" until the owner leaves it
   const [inSetup, setInSetup] = useState(settingUp)
   if (settingUp && !inSetup) setInSetup(true)
+  const [backupOpen, setBackupOpen] = useState(false)
 
+  if (backupOpen) {
+    // An import can change the screen underneath, so leaving Backup goes where the data now says (spec §12.3)
+    const leave = () => {
+      setBackupOpen(false)
+      setInSetup(settingUp)
+    }
+    return <Backup back={inSetup ? 'Close' : 'Today'} onBack={leave} />
+  }
   // Setup places the banners itself, inside the screen it fits to the keyboard
   if (inSetup) return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} />
-  return <Today quarter={screen.quarter} />
+  return <Today quarter={screen.quarter} onBackup={() => setBackupOpen(true)} />
 }

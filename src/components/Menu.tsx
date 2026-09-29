@@ -1,9 +1,10 @@
 // The menu: one button, top right on Today, opening a bottom sheet. There's no tab bar (spec §6.3).
 
-import { type Ref, useEffect, useRef } from 'react'
+import type { Ref } from 'react'
 import { labelOf, type Quarter } from '../lib/quarters'
 import { NAMES, QUESTS } from '../lib/store'
 import { AppearanceSwitch } from './AppearanceSwitch'
+import { Sheet } from './Sheet'
 
 export function MenuButton({ ref, onOpen }: { ref: Ref<HTMLButtonElement>; onOpen: () => void }) {
   return (
@@ -26,48 +27,35 @@ interface Props {
   /** "Day 43 of 92, 49 to go", or "Starts in 2 days" before Day 1 */
   summary: string
   onClose: () => void
+  /** The Backup row */
+  onBackup: () => void
   /** A save from the menu didn't happen */
   onFailure: (error: unknown) => void
 }
 
-export function Menu({ quarter, summary, onClose, onFailure }: Props) {
-  const sheet = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    sheet.current?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [onClose])
-
+export function Menu({ quarter, summary, onClose, onBackup, onFailure }: Props) {
   return (
-    <>
-      <div data-testid="scrim" aria-hidden className="fade-in fixed inset-0 z-40 bg-void/70" onClick={onClose} />
-      <div
-        ref={sheet}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Menu"
-        tabIndex={-1}
-        className="sheet-in fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[calc(100dvh-24px)] max-w-[600px] overflow-y-auto overscroll-contain rounded-t-[24px] bg-surface px-gutter pt-2 pb-[max(18px,env(safe-area-inset-bottom))] shadow-sheet outline-none"
-      >
-        <div aria-hidden className="mx-auto mb-3.5 h-[5px] w-9 rounded-full bg-line" />
-        <p className="font-semibold">{labelOf(quarter)}</p>
-        <p className="mb-2.5 text-s text-faint tabular-nums">{summary}</p>
-        {/* Each Quest's Edit and History buttons arrive in slice 7 */}
-        {QUESTS.map((quest) => (
-          <div key={quest} className="flex min-h-14 items-center border-t border-line">
-            {NAMES[quest]} Quest
-          </div>
-        ))}
-        <div className="border-t border-line pt-3 pb-4">
-          <AppearanceSwitch onFailure={onFailure} />
+    <Sheet label="Menu" onClose={onClose}>
+      <p className="font-semibold">{labelOf(quarter)}</p>
+      <p className="mb-2.5 text-s text-faint tabular-nums">{summary}</p>
+      {/* Each Quest's Edit and History buttons arrive in slice 7 */}
+      {QUESTS.map((quest) => (
+        <div key={quest} className="flex min-h-14 items-center border-t border-line">
+          {NAMES[quest]} Quest
         </div>
-        {/* Here until the Backup screen, in slice 5, takes it (spec §2.6) */}
-        <p className="text-s text-faint">Build {__BUILD__}</p>
+      ))}
+      <button
+        type="button"
+        onClick={onBackup}
+        className="flex min-h-14 w-full items-center justify-between gap-3 border-t border-line text-left"
+      >
+        Backup
+      </button>
+      <div className="border-t border-line pt-3 pb-4">
+        <AppearanceSwitch onFailure={onFailure} />
       </div>
-    </>
+      {/* Here until the Backup screen, in slice 5, takes it (spec §2.6) */}
+      <p className="text-s text-faint">Build {__BUILD__}</p>
+    </Sheet>
   )
 }

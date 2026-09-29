@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useSyncExternalStore } from 'react'
-import { msToMidnight, screenFor } from '../lib/quarters'
+import { isBackupDue, msToMidnight, screenFor } from '../lib/quarters'
 import type { Store } from '../lib/store'
 
 /** The open store, provided once by the app shell: `<CadenceContext value={store}>` */
@@ -44,9 +44,15 @@ export function useCadence() {
     today,
     /** Which screen Cadence opens on today */
     screen: screenFor(snapshot, today),
+    /** The menu nudges for a backup (spec §6.3) */
+    backupDue: isBackupDue(snapshot, today),
     saveSetupDraft: store.saveSetupDraft,
     switchSetupTarget: store.switchSetupTarget,
     finishQuest: store.finishQuest,
     setAppearance: store.setAppearance,
+    exportBackup: store.exportBackup,
+    markBackedUp: store.markBackedUp,
+    readBackup: store.readBackup,
+    replaceWith: store.replaceWith,
   }
 }

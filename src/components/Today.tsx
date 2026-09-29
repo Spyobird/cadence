@@ -54,7 +54,13 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
   }
 }
 
-export function Today({ quarter }: { quarter: Quarter }) {
+interface Props {
+  quarter: Quarter
+  /** The menu's Backup row */
+  onBackup: () => void
+}
+
+export function Today({ quarter, onBackup }: Props) {
   const { today } = useCadence()
   const words = wordsFor(quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -81,6 +87,7 @@ export function Today({ quarter }: { quarter: Quarter }) {
           quarter={quarter}
           summary={words.summary}
           onClose={closeMenu}
+          onBackup={onBackup}
           onFailure={(error) => setFailure(failureOf(error))}
         />
       )}
