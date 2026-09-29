@@ -114,8 +114,8 @@ const MAX_ITEMS = 5
 const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ').trim()
 const tidyList = (items: string[]) => items.map(oneLine).filter(Boolean)
 
-/** A Quest as it's saved: every part and list item on one tidy line, and no empty list items */
-function tidyQuest(content: QuestContent): QuestContent {
+/** A Quest as it's saved, and as it's compared: every part and list item on one tidy line, and no empty list items */
+export function tidyQuest(content: QuestContent): QuestContent {
   return {
     mainQuest: oneLine(content.mainQuest),
     whyItMatters: oneLine(content.whyItMatters),

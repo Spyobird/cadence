@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { createStore, get, set, type UseStore } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screenFor } from './quarters'
-import { open, type QuestContent, type SetupDraft, StoreError } from './store'
+import { open, type QuestContent, type SetupDraft, StoreError, tidyQuest } from './store'
 
 let now: Date
 const clock = () => now
@@ -40,6 +40,30 @@ async function refusal(write: Promise<void>) {
 beforeEach(() => {
   indexedDB = new IDBFactory()
   itIs('2026-09-29T10:00')
+})
+
+describe('tidyQuest', () => {
+  it.each([
+    ['  ship Cadence  ', 'ship Cadence'],
+    ['ship\nCadence', 'ship Cadence'],
+    ['ship \r\n  Cadence', 'ship Cadence'],
+    ['ship\n\n\nCadence\n', 'ship Cadence'],
+    ['   ', ''],
+  ])('makes a part one line: %j becomes %j', (typed, tidy) => {
+    expect(tidyQuest({ ...quest, mainQuest: typed, obstacle: typed })).toMatchObject({ mainQuest: tidy, obstacle: tidy })
+  })
+
+  it.each([
+    [[' v1 on the phone '], ['v1 on the phone']],
+    [['', 'v1 on the phone', ' ', '\n'], ['v1 on the phone']],
+    [['v1 on\nthe phone', 'Q4 set up'], ['v1 on the phone', 'Q4 set up']],
+    [['', ''], []],
+  ])('tidies each list item and drops the empty ones: %j becomes %j', (typed, tidy) => {
+    expect(tidyQuest({ ...quest, successMetrics: typed, commitments: typed })).toMatchObject({
+      successMetrics: tidy,
+      commitments: tidy,
+    })
+  })
 })
 
 describe('open', () => {
