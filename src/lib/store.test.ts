@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { createStore, get, set, type UseStore } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { flakyPhone } from '../test/phone'
 import { screenFor } from './quarters'
 import { open, type QuestContent, type SetupDraft, StoreError, tidyQuest } from './store'
 
@@ -323,19 +324,6 @@ describe('a Past Quarter', () => {
 describe('a failed save', () => {
   const draft: SetupDraft = { at: { quest: 'work', part: 'mainQuest' }, work: { mainQuest: 'ship' }, life: {} }
   const changed: SetupDraft = { ...draft, work: { mainQuest: 'ship Cadence' } }
-
-  /** Connections to the phone's storage whose next writes can be made to fail, as iOS's IndexedDB can */
-  function flakyPhone() {
-    const failures: string[] = []
-    const connect = (): UseStore => {
-      const kv = createStore('cadence', 'kv')
-      return (mode, callback) => {
-        const failure = mode === 'readwrite' ? failures.shift() : undefined
-        return failure ? Promise.reject(new DOMException('The write failed', failure)) : kv(mode, callback)
-      }
-    }
-    return { connect, failNextWrites: (...names: string[]) => failures.push(...names) }
-  }
 
   it('is retried on a fresh connection when iOS has closed the old one', async () => {
     const connections: UseStore[] = []

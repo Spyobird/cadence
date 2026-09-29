@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
+import { createStore, set } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
 import { open, type QuestContent } from './lib/store'
@@ -98,5 +99,24 @@ describe('the Appearance switch', () => {
       ['(prefers-color-scheme: light)', '#F4F5F7'],
       ['(prefers-color-scheme: dark)', '#0F1113'],
     ])
+  })
+})
+
+describe('data from a newer Cadence', () => {
+  beforeEach(() => pretendOpened('home screen (iOS)'))
+
+  it('shows a banner, and setup saves nothing, without a failed-save message', async () => {
+    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+    await launch()
+    expect(screen.getByText('This data is from a newer Cadence. Update Cadence to make changes.')).toBeInTheDocument()
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('shows no banner for data this Cadence knows', async () => {
+    await launch()
+    expect(screen.queryByText(/newer Cadence/)).not.toBeInTheDocument()
   })
 })

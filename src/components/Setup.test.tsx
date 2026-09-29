@@ -5,7 +5,8 @@ import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
 import { open } from '../lib/store'
-import { pretendOpened } from '../test/phone'
+import { isWriting } from '../lib/writing'
+import { flakyPhone, pretendOpened } from '../test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-09-29T10:00" */
@@ -14,8 +15,8 @@ const itIs = (when: string) => {
 }
 
 /** Opens Cadence as the phone would: the real app over the real store */
-async function launch() {
-  const store = await open(() => now)
+async function launch(connect?: Parameters<typeof open>[1]) {
+  const store = await open(() => now, connect)
   return render(<App store={store} />)
 }
 
@@ -175,4 +176,148 @@ describe('a list', () => {
     await user.paste('\nfour\nfive\nsix')
     expect(items()).toEqual(['one', 'two', 'three', 'four', 'five'])
   })
+})
+
+describe('the target', () => {
+  it('switches to the other Quarter, keeping the words', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.type(field('My Work Main Quest is to'), 'ship Cadence v1')
+    await user.click(button('Switch to Q3 2026'))
+    expect(screen.getByText('Q3 2026 · 1 Jul – 30 Sep')).toBeInTheDocument()
+    expect(field('My Work Main Quest is to')).toHaveValue('ship Cadence v1')
+
+    await reopen()
+    expect(screen.getByText('Q3 2026 · 1 Jul – 30 Sep')).toBeInTheDocument()
+    expect(field('My Work Main Quest is to')).toHaveValue('ship Cadence v1')
+    await user.click(button('Switch to Q4 2026'))
+    expect(screen.getByText('Q4 2026 · 1 Oct – 31 Dec')).toBeInTheDocument()
+  })
+
+  it("ends the Quest's Success Metrics on the target's last day", async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Switch to Q3 2026'))
+    await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
+    await user.keyboard('prove I can finish what I start{Enter}')
+    expect(screen.getByText("By 30 September 2026, I'll have:")).toBeInTheDocument()
+  })
+
+  it('keeps a switch made before anything is typed, without a note that it was picked up', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Switch to Q3 2026'))
+
+    await reopen()
+    expect(screen.getByText('Q3 2026 · 1 Jul – 30 Sep')).toBeInTheDocument()
+    expect(screen.queryByText('Picked up where you left off.')).not.toBeInTheDocument()
+  })
+
+  it('is fixed once the Work Quest is finished', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+    await user.click(button('Finish Work Quest'))
+    expect(await screen.findByText('Life Quest, part 1 of 6')).toBeInTheDocument()
+    expect(screen.getByText('Q4 2026 · 1 Oct – 31 Dec')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Switch to/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('the read-back', () => {
+  it('opens a tapped part, and Done returns to it', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+    await user.click(button('My Work Main Quest is to ship Cadence v1.'))
+    expect(screen.getByText('Work Quest, part 1 of 6')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+
+    await user.type(field('My Work Main Quest is to'), ' by December')
+    await user.click(button('Done'))
+    expect(screen.getByText('Work Quest, read it back')).toBeInTheDocument()
+    expect(button('My Work Main Quest is to ship Cadence v1 by December.')).toBeInTheDocument()
+  })
+})
+
+describe('the Obstacle', () => {
+  /** Opens setup and writes the four parts before the Obstacle */
+  async function toObstacle() {
+    const user = userEvent.setup()
+    await launch()
+    await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
+    await user.keyboard('prove I can finish what I start{Enter}')
+    await user.keyboard('v1 installed on the phone{Enter}{Enter}')
+    await user.keyboard('I will use it every day{Enter}')
+    expect(screen.getByText('Work Quest, part 5 of 6')).toBeInTheDocument()
+    return user
+  }
+
+  it('offers "Skip for now" in place of Next while it is empty', async () => {
+    const user = await toObstacle()
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(screen.getByText('Work Quest, part 5 of 6')).toBeInTheDocument()
+
+    await user.keyboard('late calls')
+    expect(next()).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Skip for now' })).not.toBeInTheDocument()
+    await user.clear(field("What's most likely to get in my way is"))
+    await user.click(button('Skip for now'))
+    expect(screen.getByText('Work Quest, part 6 of 6')).toBeInTheDocument()
+  })
+
+  it('once skipped, can be added from the read-back', async () => {
+    const user = await toObstacle()
+    await user.click(button('Skip for now'))
+    await user.keyboard('Build every Saturday morning{Enter}{Enter}')
+    await user.click(button("What's most likely to get in my way is Skipped for now. Tap to add one."))
+
+    await user.type(field("What's most likely to get in my way is"), 'late client calls')
+    await user.click(button('Done'))
+    expect(button("What's most likely to get in my way is late client calls.")).toBeInTheDocument()
+  })
+})
+
+describe('a save that fails', () => {
+  it('blocks with a message, and keeps the words on screen', async () => {
+    const user = userEvent.setup()
+    const phone = flakyPhone()
+    await launch(phone.connect)
+    phone.failNextWrites('AbortError')
+    await user.type(field('My Work Main Quest is to'), 's')
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+      "Couldn't save. Close and reopen Cadence, or restart the iPhone.",
+    )
+    expect(field('My Work Main Quest is to')).toHaveValue('s')
+    await user.click(button('OK'))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('says when the iPhone storage is full', async () => {
+    const user = userEvent.setup()
+    const phone = flakyPhone()
+    await launch(phone.connect)
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+    phone.failNextWrites('QuotaExceededError')
+    await user.click(button('Finish Work Quest'))
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent("Couldn't save: iPhone storage is full.")
+    expect(screen.getByText('Work Quest, read it back')).toBeInTheDocument()
+  })
+})
+
+it('holds off an update reload until the Quarter is set up (spec §2.3)', async () => {
+  const user = userEvent.setup()
+  await launch()
+  expect(isWriting()).toBe(true)
+
+  await writeQuest(user, 'Work', 'ship Cadence v1')
+  await user.click(button('Finish Work Quest'))
+  await screen.findByText('Life Quest, part 1 of 6')
+  await writeQuest(user, 'Life', 'run 5K in under 25 minutes')
+  await user.click(button('Finish Life Quest'))
+  await screen.findByRole('heading', { name: 'Q4 2026 is set up' })
+  expect(isWriting()).toBe(false)
 })

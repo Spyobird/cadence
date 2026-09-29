@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { NewerDataBanner } from './components/NewerDataBanner'
 import { Placeholder } from './components/Placeholder'
 import { SafariBanner } from './components/SafariBanner'
 import { Setup } from './components/Setup'
@@ -11,6 +12,7 @@ export function App({ store }: { store: Store }) {
   return (
     <CadenceContext value={store}>
       {!standalone && <SafariBanner />}
+      <NewerDataBanner />
       <Screens />
     </CadenceContext>
   )
