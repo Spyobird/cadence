@@ -11,7 +11,7 @@ interface PartWords {
   /** The Scaffold's opening, which the owner's words continue */
   opening: (quest: Quest, quarter: Quarter) => string
   placeholder: string
-  /** Faint, under the field. `{end}` is the Quarter's last day. */
+  /** Faint, under the field. `{end}` is the Quarter's last day, and `*when*` is set in italics. */
   hint: string
   /** The name of one item, for the two lists: "Success Metric 1" */
   item?: string
@@ -54,7 +54,7 @@ export const SCAFFOLD: Record<Part, PartWords> = {
     name: 'Commitments',
     opening: () => "To make sure I complete the Quest, I'm going to:",
     placeholder: 'a habit or action, with a when',
-    hint: 'One habit with a when ("every Monday 9–11am, deep work") and one action with a by-when. Up to five.',
+    hint: 'One habit with a *when* ("every Monday 9–11am, deep work") and one action with a *by when*.',
     item: 'Commitment',
   },
 }

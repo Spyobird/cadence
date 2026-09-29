@@ -108,16 +108,64 @@ it('writes both Quests, Work then Life, and they are still there after a reload'
   expect(screen.getByText('run 5K in under 25 minutes')).toBeInTheDocument()
 })
 
-it('resumes on the part it was left on, with the words as typed', async () => {
-  const user = userEvent.setup()
-  await launch()
-  await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
-  await user.keyboard('prove I can')
+describe('resuming', () => {
+  it('opens on the part it was left on, with the words as typed', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
+    await user.keyboard('prove I can')
 
-  await reopen()
-  expect(screen.getByText('Work Quest, part 2 of 6')).toBeInTheDocument()
-  expect(field(/because completing it would$/)).toHaveValue('prove I can')
-  expect(screen.getByRole('status')).toHaveTextContent('Picked up where you left off.')
+    await reopen()
+    expect(screen.getByText('Work Quest, part 2 of 6')).toBeInTheDocument()
+    expect(field(/because completing it would$/)).toHaveValue('prove I can')
+    expect(screen.getByRole('status')).toHaveTextContent('Picked up where you left off.')
+  })
+
+  it('opens on a list with its items', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
+    await user.keyboard('prove I can finish what I start{Enter}')
+    await user.keyboard('one{Enter}two')
+
+    await reopen()
+    expect(screen.getByText('Work Quest, part 3 of 6')).toBeInTheDocument()
+    expect(field('Success Metric 1')).toHaveValue('one')
+    expect(field('Success Metric 2')).toHaveValue('two')
+  })
+
+  it('opens on the read-back', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+
+    await reopen()
+    expect(screen.getByText('Work Quest, read it back')).toBeInTheDocument()
+    expect(button('Finish Work Quest')).toBeEnabled()
+  })
+
+  it('returns to the read-back from a part opened there', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+    await user.click(button('My Work Main Quest is to ship Cadence v1'))
+
+    await reopen()
+    await user.click(button('Done'))
+    expect(screen.getByText('Work Quest, read it back')).toBeInTheDocument()
+  })
+
+  it('opens on the Life Quest once Work is finished, and says it picked up', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await writeQuest(user, 'Work', 'ship Cadence v1')
+    await user.click(button('Finish Work Quest'))
+    await screen.findByText('Life Quest, part 1 of 6')
+
+    await reopen()
+    expect(screen.getByText('Life Quest, part 1 of 6')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Picked up where you left off.')
+  })
 })
 
 describe('a list', () => {
@@ -157,6 +205,22 @@ describe('a list', () => {
     await user.keyboard('one{Enter}two{Enter}{Backspace}')
     expect(items()).toEqual(['one', 'two'])
     expect(field('Success Metric 2')).toHaveFocus()
+  })
+
+  it('removes an empty first item on Backspace, when there are others', async () => {
+    const user = await toSuccessMetrics()
+    await user.keyboard('one{Enter}two')
+    await user.clear(field('Success Metric 1'))
+    await user.keyboard('{Backspace}')
+    expect(items()).toEqual(['two'])
+    expect(field('Success Metric 1')).toHaveFocus()
+  })
+
+  it('keeps an item, and the keyboard on it, when a paste holds only line breaks', async () => {
+    const user = await toSuccessMetrics()
+    await user.paste('\n\n')
+    expect(items()).toEqual([''])
+    expect(field('Success Metric 1')).toHaveFocus()
   })
 
   it('moves the focused item up and down, and removes it', async () => {
@@ -257,15 +321,27 @@ describe('the read-back', () => {
     const user = userEvent.setup()
     await launch()
     await writeQuest(user, 'Work', 'ship Cadence v1')
-    await user.click(button('My Work Main Quest is to ship Cadence v1.'))
+    await user.click(button('My Work Main Quest is to ship Cadence v1'))
     expect(screen.getByText('Work Quest, part 1 of 6')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
 
     await user.type(field('My Work Main Quest is to'), ' by December')
     await user.click(button('Done'))
     expect(screen.getByText('Work Quest, read it back')).toBeInTheDocument()
-    expect(button('My Work Main Quest is to ship Cadence v1 by December.')).toBeInTheDocument()
+    expect(button('My Work Main Quest is to ship Cadence v1 by December')).toBeInTheDocument()
   })
+})
+
+it('hints at a when for the Commitments, as §4.1 words it', async () => {
+  const user = userEvent.setup()
+  await launch()
+  await writeQuest(user, 'Work', 'ship Cadence v1')
+  await user.click(button('Back'))
+  expect(
+    screen.getByText((_, element) =>
+      element?.textContent === 'One habit with a when ("every Monday 9–11am, deep work") and one action with a by when.',
+    ),
+  ).toBeInTheDocument()
 })
 
 describe('the Obstacle', () => {
@@ -295,15 +371,17 @@ describe('the Obstacle', () => {
     expect(screen.getByText('Work Quest, part 6 of 6')).toBeInTheDocument()
   })
 
-  it('once skipped, can be added from the read-back', async () => {
+  it('once skipped, is left out of the read-back, and Back still reaches it', async () => {
     const user = await toObstacle()
     await user.click(button('Skip for now'))
     await user.keyboard('Build every Saturday morning{Enter}{Enter}')
-    await user.click(button("What's most likely to get in my way is Skipped for now. Tap to add one."))
+    expect(screen.queryByText("What's most likely to get in my way is")).not.toBeInTheDocument()
 
-    await user.type(field("What's most likely to get in my way is"), 'late client calls')
-    await user.click(button('Done'))
-    expect(button("What's most likely to get in my way is late client calls.")).toBeInTheDocument()
+    await user.click(button('Back'))
+    await user.click(button('Back'))
+    await user.type(field("What's most likely to get in my way is"), 'late client calls{Enter}')
+    await user.click(next())
+    expect(button("What's most likely to get in my way is late client calls")).toBeInTheDocument()
   })
 })
 
@@ -319,6 +397,7 @@ describe('a save that fails', () => {
       "Couldn't save. Close and reopen Cadence, or restart the iPhone.",
     )
     expect(field('My Work Main Quest is to')).toHaveValue('s')
+    expect(button('OK')).toHaveFocus()
     await user.click(button('OK'))
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })

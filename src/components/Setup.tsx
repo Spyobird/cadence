@@ -17,7 +17,7 @@ import {
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { plain, primary } from './buttons'
-import { Bar, PartScreen, type Words } from './PartScreen'
+import { Bar, isPartWritten, PartScreen, type Words } from './PartScreen'
 import { Problem } from './Problem'
 import { ReadBack } from './ReadBack'
 
@@ -50,8 +50,14 @@ export function Setup({ quarter: opened, onToday }: Props) {
     const stored = snapshot.setupDrafts[opened]
     return !!stored && (QUESTS.some((quest) => hasWords(stored[quest])) || isFinished(snapshot, opened, 'work'))
   })
-  /** The part on screen was opened from the read-back, so Done returns there */
-  const [fromReadBack, setFromReadBack] = useState(false)
+  /**
+   * The part on screen was opened from the read-back, so Done returns there. On resuming a part, written
+   * Commitments mean the read-back was reached before, and every later part is written.
+   */
+  const [fromReadBack, setFromReadBack] = useState(() => {
+    const stored = snapshot.setupDrafts[opened]
+    return !!stored && stored.at.part !== 'readBack' && isPartWritten(stored[stored.at.quest], 'commitments')
+  })
   const [finishing, setFinishing] = useState(false)
   const [setUp, setSetUp] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -102,7 +108,8 @@ export function Setup({ quarter: opened, onToday }: Props) {
   // The switch reaches the other of the Current and Upcoming Quarters, until Work is finished (spec §3.2)
   const current = quarterOf(today)
   const other = quarter === current ? nextQuarter(current) : current
-  const canSwitch = !isFinished(snapshot, quarter, 'work') && !snapshot.setupDrafts[other] && !snapshot.quarters[other]
+  const canSwitch =
+    !finishing && !isFinished(snapshot, quarter, 'work') && !snapshot.setupDrafts[other] && !snapshot.quarters[other]
 
   function switchTarget() {
     const from = quarter
@@ -170,9 +177,10 @@ export function Setup({ quarter: opened, onToday }: Props) {
         <>
           <h1 className="step-in mt-6 text-l font-semibold">Your {NAMES[quest]} Quest</h1>
           <p className="mt-2 text-s text-faint">Read it through. Tap a part to change it.</p>
-          <ReadBack quest={quest} quarter={quarter} content={content} onPart={(to) => toPart(to, true)} />
+          <ReadBack quest={quest} quarter={quarter} content={content} onPart={(to) => toPart(to, true)} disabled={finishing} />
           <Bar>
-            <button type="button" className={plain} onClick={() => toPart('commitments')}>
+            {/* Nothing else is saved while a Quest is finished: a save holding its words would be refused */}
+            <button type="button" className={plain} onClick={() => toPart('commitments')} disabled={finishing}>
               Back
             </button>
             <button type="button" className={primary} onClick={finish} disabled={!canFinish}>

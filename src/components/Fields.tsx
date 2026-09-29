@@ -95,6 +95,8 @@ interface ListProps {
   placeholder: string
 }
 
+const without = (items: string[], index: number) => items.filter((_, i) => i !== index)
+
 const tool = 'min-h-11 rounded-full bg-raise px-3 text-s text-given disabled:text-faint'
 
 /** Success Metrics or Commitments: one to five one-line items, in the owner's order (spec §5.2) */
@@ -120,16 +122,16 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
 
   function type(index: number, text: string) {
     if (!/[\r\n]/.test(text)) return onChange(items.map((item, i) => (i === index ? text : item)))
-    // Pasted or dictated lines become separate items, up to five
-    const lines = text.split(/[\r\n]+/).map((line) => line.trim()).filter(isWritten)
-    const next = [...items.slice(0, index), ...lines, ...items.slice(index + 1)].slice(0, MAX_ITEMS)
-    update(next, Math.min(index + lines.length, next.length) - 1)
+    // Pasted or dictated lines become separate items, up to five. A paste of line breaks alone leaves the item empty.
+    const [first = '', ...rest] = text.split(/[\r\n]+/).map((line) => line.trim()).filter(isWritten)
+    const next = [...items.slice(0, index), first, ...rest, ...items.slice(index + 1)].slice(0, MAX_ITEMS)
+    update(next, Math.min(index + rest.length, next.length - 1))
   }
 
   function enter(index: number) {
     if (!isWritten(items[index]!)) {
       // Return on an empty item leaves the list, once something is written
-      if (items.some(isWritten)) onLeave(items.length > 1 ? items.filter((_, i) => i !== index) : items)
+      if (items.some(isWritten)) onLeave(items.length > 1 ? without(items, index) : items)
       return
     }
     if (items.length >= MAX_ITEMS) return onLeave(items)
@@ -144,10 +146,7 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
 
   function remove(index: number) {
     if (items.length === 1) return update([''], 0)
-    update(
-      items.filter((_, i) => i !== index),
-      Math.max(0, index - 1),
-    )
+    update(without(items, index), Math.max(0, index - 1))
   }
 
   const last = items.at(-1)!
@@ -170,7 +169,7 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
               capitalise
               onChange={(text) => type(index, text)}
               onEnter={() => enter(index)}
-              onBackspaceEmpty={index > 0 ? () => update(items.filter((_, i) => i !== index), index - 1) : undefined}
+              onBackspaceEmpty={items.length > 1 ? () => update(without(items, index), Math.max(0, index - 1)) : undefined}
               onFocus={() => setFocused(index)}
               onBlur={() => setFocused((was) => (was === index ? null : was))}
             />

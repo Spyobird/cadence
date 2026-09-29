@@ -4,28 +4,30 @@ import type { Quarter } from '../lib/quarters'
 import { PARTS, type Part, SCAFFOLD } from '../lib/scaffold'
 import { type Quest, type QuestContent, tidyQuest } from '../lib/store'
 
-/** A sentence ends with a full stop, unless the owner gave it other punctuation. Display only. */
-const asSentence = (text: string) => (/[.!?…"')]$/.test(text) ? text : `${text}.`)
-
 interface Props {
   quest: Quest
   quarter: Quarter
   content: QuestContent
   /** Tapping a part opens its screen */
   onPart: (part: Part) => void
+  /** While the Quest is being finished */
+  disabled: boolean
 }
 
-export function ReadBack({ quest, quarter, content, onPart }: Props) {
+export function ReadBack({ quest, quarter, content, onPart, disabled }: Props) {
   const tidy = tidyQuest(content)
   return (
     <div className="mt-4">
       {PARTS.map((part) => {
         const value = tidy[part]
+        // An empty Obstacle is left out wherever the Quest is shown (spec §4.1)
+        if (value.length === 0) return null
         return (
           <button
             key={part}
             type="button"
             onClick={() => onPart(part)}
+            disabled={disabled}
             className={`block w-full border-b border-line py-3.5 text-left ${part === 'mainQuest' ? 'text-l' : 'text-m'}`}
           >
             <span className="text-given">{SCAFFOLD[part].opening(quest, quarter)}</span>{' '}
@@ -36,11 +38,8 @@ export function ReadBack({ quest, quarter, content, onPart }: Props) {
                   {item}
                 </span>
               ))
-            ) : value ? (
-              <span className="font-serif text-ink">{asSentence(value)}</span>
             ) : (
-              // Only the Obstacle can be empty: skipped, and still tappable to add one
-              part === 'obstacle' && <span className="mt-1 block text-faint">Skipped for now. Tap to add one.</span>
+              <span className="font-serif text-ink">{value}</span>
             )}
           </button>
         )

@@ -62,7 +62,11 @@ export function PartScreen({ quest, quarter, part, words, onWords, onNext, onBac
             labelledBy={openingId}
           />
         )}
-        <p className="mt-3.5 text-m text-faint">{withEnd(hint, quarter)}</p>
+        <p className="mt-3.5 text-m text-faint">
+          {withEnd(hint, quarter)
+            .split('*')
+            .map((piece, i) => (i % 2 ? <em key={i}>{piece}</em> : piece))}
+        </p>
         {part === 'mainQuest' && <Stuck quest={quest} quarter={quarter} />}
       </div>
       <Bar>
