@@ -64,6 +64,32 @@ it('enables Next once the part is written', async () => {
   expect(next()).toBeEnabled()
 })
 
+it('offers four questions to help find the Main Quest, and only there', async () => {
+  const user = userEvent.setup()
+  await launch()
+  await user.click(button('Stuck? Four questions to help find it'))
+  expect(
+    screen.getByText('Fast-forward to 31 December 2026: what one accomplishment would make you proudest?'),
+  ).toBeInTheDocument()
+  expect(screen.getAllByRole('listitem')).toHaveLength(4)
+
+  await user.type(field('My Work Main Quest is to'), 'ship Cadence v1{Enter}')
+  expect(screen.queryByRole('button', { name: /^Stuck\?/ })).not.toBeInTheDocument()
+})
+
+it('asks the keyboard for Next on Return, and for capitals only on list items', async () => {
+  const user = userEvent.setup()
+  await launch()
+  const mainQuest = field('My Work Main Quest is to')
+  expect(mainQuest).toHaveAttribute('enterkeyhint', 'next')
+  expect(mainQuest).toHaveAttribute('autocapitalize', 'none')
+
+  await user.type(mainQuest, 'ship Cadence v1{Enter}')
+  await user.keyboard('prove I can finish what I start{Enter}')
+  expect(field('Success Metric 1')).toHaveAttribute('enterkeyhint', 'next')
+  expect(field('Success Metric 1')).toHaveAttribute('autocapitalize', 'sentences')
+})
+
 it('writes both Quests, Work then Life, and they are still there after a reload', async () => {
   const user = userEvent.setup()
   await launch()
@@ -221,6 +247,8 @@ describe('the target', () => {
     expect(await screen.findByText('Life Quest, part 1 of 6')).toBeInTheDocument()
     expect(screen.getByText('Q4 2026 · 1 Oct – 31 Dec')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Switch to/ })).not.toBeInTheDocument()
+    // Nor can Life go back into Work
+    expect(button('Back')).toBeDisabled()
   })
 })
 

@@ -32,7 +32,7 @@ export function ReadBack({ quest, quarter, content, onPart }: Props) {
             {Array.isArray(value) ? (
               value.map((item, index) => (
                 <span key={index} className="mt-1 flex gap-2 font-serif text-ink">
-                  <span className="text-faint tabular-nums">{index + 1}.</span>
+                  <span className="w-6 shrink-0 text-faint tabular-nums">{index + 1}.</span>
                   {item}
                 </span>
               ))
