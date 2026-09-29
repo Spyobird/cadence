@@ -1,7 +1,7 @@
 # Backup
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 04
 
 ## Goal
@@ -30,7 +30,7 @@ The owner can export everything to Files, and import a backup to replace everyth
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed. The round trip is checked on the phone after slice 6.
+- [x] Deployed, at `ac06ddd` on 30 Sep 2026. The round trip is checked on the phone after slice 6, and recorded in ticket 06.
 - [x] `CHANGELOG.md`: "Added: Backup export and import".
 
 ## Build notes
