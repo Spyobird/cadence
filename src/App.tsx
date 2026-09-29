@@ -1,6 +1,7 @@
 import { useLayoutEffect, useState } from 'react'
 import { Backup } from './components/Backup'
 import { Edit } from './components/Edit'
+import { History } from './components/History'
 import { Setup } from './components/Setup'
 import { Today } from './components/Today'
 import { CadenceContext, useCadence } from './hooks/useCadence'
@@ -54,7 +55,7 @@ function Screens() {
       case 'edit':
         return <Edit quarter={pushed.quarter} quest={pushed.quest} onClose={leave} />
       case 'history':
-        return null
+        return <History quarter={pushed.quarter} quest={pushed.quest} onBack={leave} />
     }
   }
   // Setup places the banners itself, inside the screen it fits to the keyboard

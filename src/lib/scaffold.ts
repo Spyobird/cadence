@@ -70,6 +70,9 @@ export function shownParts(content: QuestContent): [Part, QuestContent[Part]][] 
   return PARTS.map((part): [Part, QuestContent[Part]] => [part, content[part]]).filter(([, words]) => words.length > 0)
 }
 
+/** Starts with a capital, for display only: the stored words continue a Scaffold opening, and are unchanged */
+export const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
 /** More than spaces */
 export const isWritten = (text: string) => text.trim() !== ''
 

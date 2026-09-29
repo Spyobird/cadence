@@ -2,12 +2,9 @@
 
 import { useState } from 'react'
 import type { Quarter } from '../lib/quarters'
-import { SCAFFOLD, shownParts } from '../lib/scaffold'
+import { capitalised, SCAFFOLD, shownParts } from '../lib/scaffold'
 import { NAMES, type Quest, type QuestContent } from '../lib/store'
 import { TodaysReflection } from './TodaysReflection'
-
-/** Starts with a capital, for display only: the stored words continue a Scaffold opening, and are unchanged */
-const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 interface Props {
   quest: Quest
