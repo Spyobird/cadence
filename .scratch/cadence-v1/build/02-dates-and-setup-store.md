@@ -1,7 +1,7 @@
 # Dates, Prompts and the store's setup path
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 01
 
 ## Goal
@@ -29,11 +29,29 @@ Later slices add their own store operations: Backup in 05, Reflections in 06, ed
 
 ## Done when
 
-- [ ] Table tests cover:
+- [x] Table tests cover:
   - quarter lengths (Q4 2026 = 92, Q1 2027 = 90);
   - 1 Jan;
   - the last-14-days default (18 Dec, and 17–30 Sep for Q3);
   - "before Day 1";
   - every `screenFor` rule and edge case in §3.1.
-- [ ] Store tests cover every rule in §10 and §13.4 that the setup path touches, plus retry-once, quota and a newer schema.
-- [ ] `tsc --noEmit` and `npm test -- --run` pass. `CHANGELOG.md` notes nothing, since nothing changed on the phone.
+- [x] Store tests cover every rule in §10 and §13.4 that the setup path touches, plus retry-once, quota and a newer schema.
+- [x] `tsc --noEmit` and `npm test -- --run` pass. `CHANGELOG.md` notes nothing, since nothing changed on the phone.
+
+## Build notes
+
+- **Writes:** every write, to one key or several, is one transaction through `createStore`'s store function, with its values worked out from memory. Writes wait their turn in a queue, so each one's rules see the write before it. §13.1 and ADR 0004 say a one-key change uses `update()`. **Open for the owner:** amend that wording, or switch one-key writes to `update()`.
+- **Ended:** the button sets up the Current Quarter, as §3.1 says, even in its last 14 days. The setup switch reaches the Upcoming Quarter from there.
+- **Finishing:** `finishQuest(quarter, quest, content)` finishes the words on screen, not the stored Draft.
+- **Tidy-up:** a setup Draft is stored as typed. The tidy-up applies when a Version is made. `tidyQuest` is exported for slice 7's "changed".
+- **Rules the spec implies** (each refused as `not-allowed`):
+  - Work is finished before Life, and a Quest is finished only once.
+  - Setup writes only to the Current or the Upcoming Quarter.
+  - The setup Draft can't hold a finished Quest's words or point at it.
+- **Errors:** a `StoreError` has a `reason` and a `message`. The messages for `failed`, `storage-full`, `quarter-ended` and `read-only` are the spec's words. Read-only is checked before any other rule.
+- **Launch:** the first-run `meta` write is retried like any save. The read at launch isn't, since its connection is new, so a failed read throws.
+- **Test seam:** `open(clock, connect)`. Tests pass a `connect` that closes or fails the connection.
+- **For slice 3:**
+  - Provide the store with `<CadenceContext value={store}>`.
+  - Send the last as-typed save before Finish. A save that lands after Finish, still holding Work's words, is refused.
+  - A switch before anything is typed stores a blank Draft, so `screenFor` says `resume`. Don't show "Picked up where you left off." for a blank Draft.
