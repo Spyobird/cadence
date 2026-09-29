@@ -120,7 +120,10 @@ body {
   padding-bottom: 8px;
 }
 
-/* Only in answer to a tap (DESIGN.md): a setup step slides in, and a sheet rises over a fading scrim */
+/*
+ * Only in answer to a tap (DESIGN.md): a setup step slides in, a sheet rises over a fading scrim, and the Reflection
+ * popup scales in
+ */
 @media (prefers-reduced-motion: no-preference) {
   .step-in {
     animation: step-in 0.2s var(--ease);
@@ -130,6 +133,9 @@ body {
   }
   .fade-in {
     animation: fade-in 0.2s var(--ease);
+  }
+  .pop-in {
+    animation: pop-in 0.26s var(--ease);
   }
 }
 @keyframes step-in {
@@ -147,6 +153,12 @@ body {
 @keyframes fade-in {
   from {
     opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
   }
 }
 

@@ -3,10 +3,12 @@
 import { useCallback, useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { firstDayOf, labelOf, lastDayOf, lengthOf, type LocalDate, type Quarter, standingIn, weekdayDate } from '../lib/quarters'
+import type { Quest } from '../lib/store'
 import { Banners } from './Banners'
 import { FailedSave, failureOf } from './FailedSave'
 import { Menu, MenuButton } from './Menu'
 import { Pages } from './Pages'
+import { ReflectionPopup } from './ReflectionPopup'
 import { Ring, type RingFace } from './Ring'
 
 /** What Today says about the day, from where today stands in the Quarter on screen */
@@ -17,6 +19,8 @@ interface DayWords {
   summary: string
   /** At the foot of each page, while no Reflection can be written yet (§6.4) */
   reflectionsNote?: string
+  /** Today is a Day of the Quarter, so its Reflections can be written (§7.1) */
+  canReflect: boolean
   ring: RingFace
 }
 
@@ -29,6 +33,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
       return {
         dateLine: weekdayDate(today),
         summary: `Day ${day} of ${length}, ${daysLeft} to go`,
+        canReflect: true,
         ring: { passed: day - 1, today: day, numeral: day, caption: `of ${length}`, label: `Day ${day} of ${length}` },
       }
     }
@@ -40,6 +45,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
         dateLine: `Starts ${dayOne}`,
         summary: `Starts in ${daysToGo} ${days}`,
         reflectionsNote: `Reflections start on Day 1, ${dayOne}.`,
+        canReflect: false,
         // The ring is empty, and counts the days to go
         ring: { passed: 0, numeral: daysToGo, caption: `${days} to go`, label: `${daysToGo} ${days} to go` },
       }
@@ -49,6 +55,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
       return {
         dateLine: weekdayDate(today),
         summary: `Ended ${weekdayDate(lastDayOf(quarter))}`,
+        canReflect: false,
         ring: { passed: length, numeral: length, caption: 'ended', label: `${labelOf(quarter)} has ended` },
       }
   }
@@ -65,6 +72,8 @@ export function Today({ quarter, onBackup }: Props) {
   const words = wordsFor(quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
+  /** The Quest whose Reflection popup is open */
+  const [reflecting, setReflecting] = useState<Quest | null>(null)
   const menuButton = useRef<HTMLButtonElement>(null)
   const closeMenu = useCallback(() => {
     setMenuOpen(false)
@@ -80,7 +89,11 @@ export function Today({ quarter, onBackup }: Props) {
           <Ring quarter={quarter} face={words.ring} />
           <p className="text-given tabular-nums">{words.dateLine}</p>
         </header>
-        <Pages quarter={quarter} reflectionsNote={words.reflectionsNote} />
+        <Pages
+          quarter={quarter}
+          reflectionsNote={words.reflectionsNote}
+          onReflect={words.canReflect ? setReflecting : undefined}
+        />
       </main>
       {menuOpen && (
         <Menu
@@ -90,6 +103,9 @@ export function Today({ quarter, onBackup }: Props) {
           onBackup={onBackup}
           onFailure={(error) => setFailure(failureOf(error))}
         />
+      )}
+      {reflecting && (
+        <ReflectionPopup key={reflecting} quest={reflecting} quarter={quarter} onClose={() => setReflecting(null)} />
       )}
       {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}
     </>

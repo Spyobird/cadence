@@ -2,9 +2,11 @@ import 'fake-indexeddb/auto'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
+import { createStore, set } from 'idb-keyval'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
+import { isWriting } from '../lib/writing'
 import { aMomentLater, flakyPhone, pretendOpened } from '../test/phone'
 
 let now: Date
@@ -292,5 +294,200 @@ describe('a new day (spec §3)', () => {
     act(() => void document.dispatchEvent(new Event('visibilitychange')))
     expect(screen.getByText('Friday 13 Nov')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Day 44 of 92' })).toBeInTheDocument()
+  })
+})
+
+describe('Reflections (spec §7)', () => {
+  beforeEach(() => itIs('2026-11-12T10:00'))
+
+  const THURSDAY = "What's getting in the way right now, and what will you do when it shows up?"
+  const page = (name: 'Work' | 'Life') => within(screen.getByRole('tabpanel', { name }))
+  const popup = (name: 'Work' | 'Life') => within(screen.getByRole('dialog', { name: `${name} Reflection` }))
+  /** A Reflection already saved today, before Cadence opens */
+  const reflected = async (quest: 'work' | 'life', text: string) =>
+    (await open(() => now)).saveReflection('2026-Q4', quest, text)
+
+  it("writes today's Reflection on a Quest, under the day's Prompt, and keeps its line breaks", async () => {
+    const user = userEvent.setup()
+    const { unmount } = await launch()
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+
+    const work = popup('Work')
+    expect(work.getByText('Work, Thu 12 Nov')).toBeInTheDocument()
+    expect(work.getByText(THURSDAY)).toBeInTheDocument()
+    expect(work.getByRole('textbox', { name: 'Reflection' })).toHaveFocus()
+    expect(work.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.keyboard('Shipped the ring.{Enter}Pages next.  ')
+    await user.click(work.getByRole('button', { name: 'Save' }))
+
+    const saved = await page('Work').findByText(/^Shipped the ring/)
+    expect(saved.textContent).toBe('Shipped the ring.\nPages next.')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(page('Work').getByRole('button', { name: "Edit today's Reflection" })).toBeInTheDocument()
+    expect(page('Life').getByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
+
+    unmount()
+    await launch()
+    expect(page('Work').getByText(/^Shipped the ring/).textContent).toBe('Shipped the ring.\nPages next.')
+  })
+
+  it('reopens a saved one to change until midnight, and saves the change in its place', async () => {
+    const user = userEvent.setup()
+    await reflected('work', 'Pages next')
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Edit today's Reflection" }))
+
+    const work = popup('Work')
+    const field = work.getByRole('textbox', { name: 'Reflection' })
+    expect(field).toHaveValue('Pages next')
+    expect(field).toHaveFocus()
+    expect(work.getByText('You can change it until midnight.')).toBeInTheDocument()
+    await user.keyboard('  ')
+    expect(work.getByRole('button', { name: 'Save' })).toBeDisabled() // spaces at the end change nothing
+    await user.keyboard('{Backspace}{Backspace}, then the fold')
+    await user.click(work.getByRole('button', { name: 'Save' }))
+
+    expect(await page('Work').findByText('Pages next, then the fold')).toBeInTheDocument()
+    expect(page('Work').queryByText('Pages next')).not.toBeInTheDocument()
+  })
+
+  it('removes a saved one once it is emptied, bringing back the pill', async () => {
+    const user = userEvent.setup()
+    await reflected('life', 'Ran 4K')
+    await launch()
+    await user.click(page('Life').getByRole('button', { name: "Edit today's Reflection" }))
+
+    const life = popup('Life')
+    await user.clear(life.getByRole('textbox', { name: 'Reflection' }))
+    await user.type(life.getByRole('textbox', { name: 'Reflection' }), ' {Enter} ')
+    expect(life.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    await user.click(life.getByRole('button', { name: 'Remove' }))
+
+    expect(await page('Life').findByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
+    expect(screen.queryByText('Ran 4K')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('closes at Cancel with nothing changed, and asks before discarding what was written', async () => {
+    const user = userEvent.setup()
+    await launch()
+    const writeButton = () => page('Work').getByRole('button', { name: "Write today's Reflection" })
+    await user.click(writeButton())
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(writeButton())
+    await user.keyboard('Pages next')
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    const question = within(screen.getByRole('alertdialog', { name: 'Discard what you wrote?' }))
+    await user.click(question.getByRole('button', { name: 'Keep writing' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(popup('Work').getByRole('textbox', { name: 'Reflection' })).toHaveValue('Pages next')
+
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(writeButton()).toBeInTheDocument()
+    expect(screen.queryByText('Pages next')).not.toBeInTheDocument()
+  })
+
+  it('treats a tap outside the box, or Escape, as Cancel', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('Pages next')
+    await user.click(screen.getByTestId('outside-the-popup'))
+    expect(screen.getByRole('alertdialog', { name: 'Discard what you wrote?' })).toBeInTheDocument()
+  })
+
+  it('keeps the text in the field when the Quarter ended at midnight, so the save is refused (spec §7.1)', async () => {
+    const user = userEvent.setup()
+    itIs('2026-12-31T23:58')
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('The last Day')
+
+    itIs('2027-01-01T00:01')
+    await user.click(popup('Work').getByRole('button', { name: 'Save' }))
+    const refused = await screen.findByRole('alertdialog')
+    expect(refused).toHaveTextContent("Q4 2026 ended at midnight, so this can't be saved.")
+    await user.click(within(refused).getByRole('button', { name: 'OK' }))
+    expect(popup('Work').getByRole('textbox', { name: 'Reflection' })).toHaveValue('The last Day')
+    expect((await open(() => now)).snapshot().quarters['2026-Q4']?.reflections).toEqual({})
+  })
+
+  it('refuses at the last midnight even when the next Quarter, set up, has taken over Today', async () => {
+    const user = userEvent.setup()
+    const december = await open(() => new Date('2026-12-20T10:00'))
+    await december.finishQuest('2027-Q1', 'work', work)
+    await december.finishQuest('2027-Q1', 'life', life)
+    itIs('2026-12-31T23:58')
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('The last Day')
+
+    itIs('2027-01-01T00:01')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    expect(screen.getByRole('img', { name: 'Day 1 of 90' })).toBeInTheDocument()
+    await user.click(popup('Work').getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent("Q4 2026 ended at midnight, so this can't be saved.")
+    expect((await open(() => now)).snapshot().quarters['2027-Q1']?.reflections).toEqual({})
+  })
+
+  it('keeps the text in the field when the save fails', async () => {
+    const user = userEvent.setup()
+    const phone = flakyPhone()
+    await launch(phone.connect)
+    await user.click(page('Life').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('Ran 4K')
+    phone.failNextWrites('QuotaExceededError')
+    await user.click(popup('Life').getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent("Couldn't save: iPhone storage is full.")
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    expect(popup('Life').getByRole('textbox', { name: 'Reflection' })).toHaveValue('Ran 4K')
+    expect(page('Life').getByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
+  })
+
+  it("leaves yesterday's behind at midnight: today starts with the pill again", async () => {
+    await reflected('work', 'Pages next')
+    await launch()
+    expect(page('Work').getByText('Pages next')).toBeInTheDocument()
+
+    itIs('2026-11-13T07:30')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    expect(page('Work').queryByText('Pages next')).not.toBeInTheDocument()
+    expect(page('Work').getByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['before Day 1', '2026-09-30T10:00'],
+    ['once the Quarter has ended', '2027-01-02T10:00'],
+  ])('offers no Reflection %s', async (_, when) => {
+    itIs(when)
+    await launch()
+    expect(screen.queryByRole('button', { name: /today's Reflection/ })).not.toBeInTheDocument()
+  })
+
+  it('shows today\'s Reflection, but offers no change, when the data is from a newer Cadence (spec §13.4)', async () => {
+    await reflected('work', 'Pages next')
+    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+    await launch()
+    expect(page('Work').getByText('Pages next')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /today's Reflection/ })).not.toBeInTheDocument()
+  })
+
+  it('holds off an update reload while the popup is open (spec §2.3)', async () => {
+    const user = userEvent.setup()
+    await launch()
+    expect(isWriting()).toBe(false)
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    expect(isWriting()).toBe(true)
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    expect(isWriting()).toBe(false)
   })
 })

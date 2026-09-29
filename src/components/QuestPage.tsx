@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { Quarter } from '../lib/quarters'
 import { SCAFFOLD, shownParts } from '../lib/scaffold'
 import { NAMES, type Quest, type QuestContent } from '../lib/store'
+import { TodaysReflection } from './TodaysReflection'
 
 /** Starts with a capital, for display only: the stored words continue a Scaffold opening, and are unchanged */
 const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
@@ -14,9 +15,11 @@ interface Props {
   content: QuestContent
   /** At the foot of the page, while no Reflection can be written yet */
   reflectionsNote?: string
+  /** Opens the Reflection popup, while today's Reflection can be written */
+  onReflect?: () => void
 }
 
-export function QuestPage({ quest, quarter, content, reflectionsNote }: Props) {
+export function QuestPage({ quest, quarter, content, reflectionsNote, onReflect }: Props) {
   // Pages open folded every time; the fold is never stored
   const [open, setOpen] = useState(false)
 
@@ -72,8 +75,12 @@ export function QuestPage({ quest, quarter, content, reflectionsNote }: Props) {
         </div>
       </div>
 
-      {/* The page ends with the Quest's Reflection area (§7), which slice 6 fills in for the running Quarter */}
-      {reflectionsNote && <p className="mt-[22px] text-faint">{reflectionsNote}</p>}
+      {/* The page ends with the Quest's Reflection area (§7.3) */}
+      {reflectionsNote ? (
+        <p className="mt-[22px] text-faint">{reflectionsNote}</p>
+      ) : (
+        onReflect && <TodaysReflection quest={quest} onWrite={onReflect} />
+      )}
     </section>
   )
 }

@@ -49,6 +49,8 @@ export function useCadence() {
     saveSetupDraft: store.saveSetupDraft,
     switchSetupTarget: store.switchSetupTarget,
     finishQuest: store.finishQuest,
+    saveReflection: store.saveReflection,
+    removeReflection: store.removeReflection,
     setAppearance: store.setAppearance,
     exportBackup: store.exportBackup,
     markBackedUp: store.markBackedUp,

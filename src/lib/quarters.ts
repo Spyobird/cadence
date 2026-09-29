@@ -1,7 +1,7 @@
 // Pure date maths for Quarters and Days (spec §3). Dates are the phone's local calendar dates, written
 // "2026-11-12"; no time zone is stored.
 
-import type { Quest, Snapshot, Version } from './store'
+import type { Quest, Reflection, Snapshot, Version } from './store'
 
 /** A local calendar date, like "2026-11-12" */
 export type LocalDate = string
@@ -197,6 +197,11 @@ export function setupTarget(today: LocalDate): Quarter {
 /** The Quest as it stands: its newest Version, or undefined until it's finished */
 export function currentVersion(snapshot: Snapshot, quarter: Quarter, quest: Quest): Version | undefined {
   return snapshot.quarters[quarter]?.versions[quest].at(-1)
+}
+
+/** The Reflection on a Quest written on that date, if there is one */
+export function reflectionOn(snapshot: Snapshot, date: LocalDate, quest: Quest): Reflection | undefined {
+  return snapshot.quarters[quarterOf(date)]?.reflections[date]?.[quest]
 }
 
 /** A Quest is finished once it has a Version (spec §3) */

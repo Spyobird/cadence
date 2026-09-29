@@ -4,16 +4,18 @@
 import { useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { currentVersion, type Quarter } from '../lib/quarters'
-import { NAMES, QUESTS } from '../lib/store'
+import { NAMES, type Quest, QUESTS } from '../lib/store'
 import { QuestPage } from './QuestPage'
 
 interface Props {
   quarter: Quarter
   /** At the foot of each page, while no Reflection can be written yet */
   reflectionsNote?: string
+  /** Opens a Quest's Reflection popup, while today's Reflections can be written */
+  onReflect?: (quest: Quest) => void
 }
 
-export function Pages({ quarter, reflectionsNote }: Props) {
+export function Pages({ quarter, reflectionsNote, onReflect }: Props) {
   const { snapshot } = useCadence()
   const pager = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(0)
@@ -71,7 +73,14 @@ export function Pages({ quarter, reflectionsNote }: Props) {
           const version = currentVersion(snapshot, quarter, quest)
           return (
             version && (
-              <QuestPage key={quest} quest={quest} quarter={quarter} content={version.content} reflectionsNote={reflectionsNote} />
+              <QuestPage
+                key={quest}
+                quest={quest}
+                quarter={quarter}
+                content={version.content}
+                reflectionsNote={reflectionsNote}
+                onReflect={onReflect && (() => onReflect(quest))}
+              />
             )
           )
         })}
