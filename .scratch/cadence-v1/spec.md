@@ -282,7 +282,7 @@ One button, top right, opens a bottom sheet. There is no tab bar. The sheet hold
 
 - no backup has been made;
 - the last one is 7 or more days old;
-- the latest set-up Quarter has ended since the last backup.
+- a set-up Quarter has ended since the last backup, even when the next one was set up before it ended.
 
 ### 6.4 Boundary states
 
@@ -399,7 +399,7 @@ One Version per Quest per Day ([ADR 0003](../../docs/adr/0003-one-version-per-qu
 
 ### 12.1 The Backup screen
 
-- **Status:** the last backup ("Last backup: Mon 12 Oct, 3 days ago" or "No backup yet"), and the storage status: "On this iPhone, marked persistent" (from a live `navigator.storage.persisted()`), or the Safari-tab warning.
+- **Status:** the last backup ("Last backup: Mon 12 Oct, 3 days ago" or "No backup yet"), and the storage status: "On this iPhone, marked persistent" (from a live `navigator.storage.persisted()`), "On this iPhone, not marked persistent, so iOS could clear it to free up space", or the Safari-tab warning.
 - **Export backup:** the primary button.
 - **Import a backup:** a secondary button.
 - **A note:** "Export before deleting Cadence from your Home Screen. Deleting the icon erases everything in it."

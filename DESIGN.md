@@ -54,6 +54,7 @@ Gold appears only on:
 - the "Write today's Reflection" / "Edit today's Reflection" link;
 - the primary button on a screen (at most one);
 - the backup-due dot on the menu button and the due time in the menu;
+- the header buttons of a pushed screen, like "‹ Today" (`--gold-text`; the owner's choice, 30 Sep 2026);
 - the caret;
 - the dot under the Quest page in view;
 - the rule beside a saved Reflection and the marker on a changed part when editing (dim gold).
