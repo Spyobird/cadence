@@ -1,7 +1,7 @@
 # Today for reading
 
 Type: build (AFK, then the owner's phone check)
-Status: open
+Status: done
 Blocked by: 03
 
 ## Goal
@@ -31,7 +31,7 @@ Cadence opens on Today: the ring, then one page per Quest with the Main Quest la
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed. The owner runs the real-use phone check (§15.2, after slice 4) and records it here.
+- [x] Deployed. The owner runs the real-use phone check (§15.2, after slice 4) and records it here.
 - [x] `CHANGELOG.md`: "Added: Today, with the day ring and both Quests"; "Added: the menu, and Appearance (System, Light, Dark)".
 
 ## Build notes
@@ -50,3 +50,7 @@ Cadence opens on Today: the ring, then one page per Quest with the Main Quest la
 - **Tests:** jsdom has no `scrollTo`, so `src/test/setup.ts` fills it in; a swipe can't be tested in jsdom and waits for the phone. The midnight test fakes `setTimeout` and `Date` only, since `fake-indexeddb` runs on `setImmediate`.
 - **Browser check:** headless Chrome at 390 px, light and dark: Day 43, the Work page unfolded, the menu, before Day 1, and the Life page by its tab.
 - **Review (standards and spec):** fixed: the day's words come from one place, with the date maths in quarters.ts; `currentVersion` and `shownParts` are shared (the read-back uses `shownParts` too); the sheet's shadow is a token, `--shadow`, added to DESIGN.md; the easing is one token, `--ease`; the ended date line is today's; a test for the Safari banner on Today; ticket 05 now moves the build stamp out of the menu. Not changed: the Today commit (scope items 1–6 in one) stays as it is; `index.html` keeps its own copy of the mirror's key and the two `--void` colours, since it runs before any module loads, and a test runs it against the app.
+
+## Phone check
+
+Checked by the owner on 29 Sep 2026, at `07c7f5b` (live at the address): Today works. The check covered the ring before Day 1, swiping and folding the pages, the Main Quest's face and Appearance across a relaunch. Setup's part of the real-use check was done with ticket 03. The iOS version wasn't noted.
