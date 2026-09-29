@@ -166,6 +166,13 @@ export function weekdayDate(date: LocalDate): string {
   return `${WEEKDAYS[weekdayOf(date)]} ${day} ${MONTHS[month - 1]!.slice(0, 3)}`
 }
 
+/** "Mon 12 Oct", or "Mon 12 Oct 2026" with its year */
+export function shortDate(date: LocalDate, withYear = false): string {
+  const [year] = ymd(date)
+  const [weekday, day, month] = weekdayDate(date).split(' ')
+  return `${weekday!.slice(0, 3)} ${day} ${month}${withYear ? ` ${year}` : ''}`
+}
+
 /** How many of a Quarter's last days aim setup at the Upcoming Quarter instead (spec §3.2) */
 const LAST_DAYS = 14
 
@@ -189,6 +196,25 @@ export function isFinished(snapshot: Snapshot, quarter: Quarter, quest: Quest): 
 /** A Quarter is set up once both of its Quests are finished */
 export function isSetUp(snapshot: Snapshot, quarter: Quarter): boolean {
   return isFinished(snapshot, quarter, 'work') && isFinished(snapshot, quarter, 'life')
+}
+
+/** How old a backup can get before the menu nudges, in Days (spec §6.3) */
+const BACKUP_EVERY = 7
+
+/**
+ * A backup is due when none has been made, when the last is 7 or more days old, or when the latest set-up Quarter
+ * has ended since it was made (spec §6.3). Days are counted on the calendar, as "3 days ago" reads.
+ */
+export function isBackupDue(snapshot: Snapshot, today: LocalDate): boolean {
+  const { lastBackupAt } = snapshot.meta
+  if (lastBackupAt === null) return true
+  const backedUpOn = localDate(new Date(lastBackupAt))
+  if (daysUntil(backedUpOn, today) >= BACKUP_EVERY) return true
+  const latest = (Object.keys(snapshot.quarters) as Quarter[])
+    .filter((quarter) => isSetUp(snapshot, quarter))
+    .sort()
+    .at(-1)
+  return !!latest && isPast(latest, today) && backedUpOn <= lastDayOf(latest)
 }
 
 /** Which screen Cadence opens on (spec §3.1) */

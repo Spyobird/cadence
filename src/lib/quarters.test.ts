@@ -5,6 +5,7 @@ import {
   daysUntil,
   endOf,
   firstDayOf,
+  isBackupDue,
   lastDayOf,
   lengthOf,
   monthStartsOf,
@@ -13,11 +14,36 @@ import {
   quarterOf,
   screenFor,
   setupTarget,
+  shortDate,
   spanOf,
   standingIn,
   weekdayDate,
 } from './quarters'
 import type { QuestContent, Snapshot } from './store'
+
+const content: QuestContent = {
+  mainQuest: 'ship Cadence v1',
+  whyItMatters: 'prove it',
+  successMetrics: ['v1 on the phone'],
+  whyItsExciting: 'it is mine',
+  obstacle: '',
+  commitments: ['Build every Saturday'],
+}
+const version = { savedOn: '2026-09-29', content }
+
+/** Stored data with these Quarters set up, these with only Work finished, and setup Drafts for these */
+function snapshotWith({ setUp = [], workOnly = [], drafts = [] }: Partial<Record<'setUp' | 'workOnly' | 'drafts', Quarter[]>>) {
+  const snapshot: Snapshot = {
+    quarters: {},
+    setupDrafts: {},
+    meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
+    readOnly: false,
+  }
+  for (const q of setUp) snapshot.quarters[q] = { versions: { work: [version], life: [version] }, reflections: {} }
+  for (const q of workOnly) snapshot.quarters[q] = { versions: { work: [version], life: [] }, reflections: {} }
+  for (const q of drafts) snapshot.setupDrafts[q] = { at: { quest: 'life', part: 'mainQuest' }, work: {}, life: {} }
+  return snapshot
+}
 
 describe('quarterOf', () => {
   it.each([
@@ -171,6 +197,17 @@ describe('weekdayDate', () => {
   })
 })
 
+describe('shortDate', () => {
+  it.each([
+    ['2026-10-12', false, 'Mon 12 Oct'],
+    ['2026-11-01', false, 'Sun 1 Nov'],
+    ['2026-10-12', true, 'Mon 12 Oct 2026'],
+    ['2027-01-02', true, 'Sat 2 Jan 2027'],
+  ] as const)('%s, with the year %s, reads %s', (date, withYear, line) => {
+    expect(shortDate(date, withYear)).toBe(line)
+  })
+})
+
 describe('setupTarget', () => {
   it.each([
     ['2026-07-01', '2026-Q3'],
@@ -196,29 +233,6 @@ describe('setupTarget', () => {
 })
 
 describe('screenFor', () => {
-  const content: QuestContent = {
-    mainQuest: 'ship Cadence v1',
-    whyItMatters: 'prove it',
-    successMetrics: ['v1 on the phone'],
-    whyItsExciting: 'it is mine',
-    obstacle: '',
-    commitments: ['Build every Saturday'],
-  }
-  const version = { savedOn: '2026-09-29', content }
-
-  /** Stored data with these Quarters set up, these with only Work finished, and setup Drafts for these */
-  function snapshotWith({ setUp = [], workOnly = [], drafts = [] }: Partial<Record<'setUp' | 'workOnly' | 'drafts', Quarter[]>>) {
-    const snapshot: Snapshot = {
-      quarters: {},
-      setupDrafts: {},
-      meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
-      readOnly: false,
-    }
-    for (const q of setUp) snapshot.quarters[q] = { versions: { work: [version], life: [version] }, reflections: {} }
-    for (const q of workOnly) snapshot.quarters[q] = { versions: { work: [version], life: [] }, reflections: {} }
-    for (const q of drafts) snapshot.setupDrafts[q] = { at: { quest: 'life', part: 'mainQuest' }, work: {}, life: {} }
-    return snapshot
-  }
 
   describe('1. running', () => {
     it('opens on Today when the Current Quarter is set up', () => {
@@ -310,6 +324,34 @@ describe('screenFor', () => {
     it('does not count a Past Quarter with only its Work Quest finished as set up', () => {
       expect(screenFor(snapshotWith({ workOnly: ['2026-Q3'] }), '2026-11-01')).toEqual({ name: 'setup', quarter: '2026-Q4' })
     })
+  })
+})
+
+describe('isBackupDue (spec §6.3)', () => {
+  /** Q4 2026 set up, or these Quarters, and the last backup made at this local time, or never */
+  function backedUp(at: string | null, setUp: Quarter[] = ['2026-Q4']) {
+    const snapshot = snapshotWith({ setUp })
+    snapshot.meta.lastBackupAt = at === null ? null : new Date(at).getTime()
+    return snapshot
+  }
+
+  it.each<['due' | 'not due', string, string | null, string]>([
+    ['due', 'no backup has been made', null, '2026-09-29'],
+    ['not due', 'the last one is from today', '2026-11-12T08:00', '2026-11-12'],
+    ['not due', 'the last one is 6 days old', '2026-11-06T23:59', '2026-11-12'],
+    ['due', 'the last one is 7 days old', '2026-11-05T00:01', '2026-11-12'],
+    ['due', 'the Quarter ended after the last one, made on its last day', '2026-12-31T22:00', '2027-01-01'],
+    ['not due', 'the last one was made after the Quarter ended', '2027-01-01T09:00', '2027-01-03'],
+  ])('is %s when %s', (due, _, at, today) => {
+    expect(isBackupDue(backedUp(at), today)).toBe(due === 'due')
+  })
+
+  it('counts only the latest set-up Quarter ending, not an earlier one', () => {
+    expect(isBackupDue(backedUp('2026-12-31T22:00', ['2026-Q4', '2027-Q1']), '2027-01-02')).toBe(false)
+  })
+
+  it('counts nothing ending before anything is set up', () => {
+    expect(isBackupDue(backedUp('2026-09-29T10:00', []), '2026-10-02')).toBe(false)
   })
 })
 
