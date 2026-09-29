@@ -15,6 +15,9 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - Setting up a Quarter's Work and Life Quests, one part to a screen, with the keyboard staying up from part to part.
 - Setup is saved as it's typed, and picks up where it was left after Cadence is closed.
 - A message when something can't be saved, and a banner when the data is from a newer Cadence.
+- Today, with the day ring and both Quests: each Main Quest large, and the rest of the Quest folded away until it's asked for.
+- Today moves on to the new day at midnight, and when Cadence is opened again.
+- The menu, and Appearance (System, Light, Dark), kept from one launch to the next.
 
 ### Removed
 
