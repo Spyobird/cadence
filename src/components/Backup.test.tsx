@@ -209,3 +209,57 @@ describe('Import', () => {
     expect(await workOnToday(user)).toBe('ship the onboarding flow by November')
   })
 })
+
+describe('a backup due (spec §6.3)', () => {
+  /** A backup made at this local time, before Cadence is opened */
+  async function backedUpAt(when: string) {
+    await (await open(() => new Date(when))).markBackedUp()
+  }
+
+  /** The menu button, and the menu's Backup row */
+  async function menu() {
+    const button = screen.getByRole('button', { name: 'Menu' })
+    await userEvent.click(button)
+    const row = within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', { name: /^Backup/ })
+    return { button, row, time: row.lastElementChild! }
+  }
+
+  it('shows a gold dot on the menu button, and the Backup row reads "Never" in gold, before any backup', async () => {
+    await launch()
+    const { button, row, time } = await menu()
+    expect(button).toHaveAccessibleDescription('A backup is due')
+    expect(row).toHaveTextContent(/^BackupNever$/)
+    expect(time).toHaveClass('text-gold-text')
+  })
+
+  it('is not due 3 days after a backup, and says when it was', async () => {
+    await backedUpAt('2026-11-09T20:00')
+    await launch()
+    const { button, row, time } = await menu()
+    expect(button).not.toHaveAccessibleDescription()
+    expect(row).toHaveTextContent(/^Backup3 days ago$/)
+    expect(time).toHaveClass('text-faint')
+  })
+
+  it('is due again 7 days after it', async () => {
+    await backedUpAt('2026-11-05T09:00')
+    await launch()
+    const { button, row, time } = await menu()
+    expect(button).toHaveAccessibleDescription('A backup is due')
+    expect(row).toHaveTextContent(/^Backup7 days ago$/)
+    expect(time).toHaveClass('text-gold-text')
+  })
+
+  it('is no longer due once a backup is exported', async () => {
+    pretendShareSheet('saved to Files')
+    await launch()
+    const user = await openBackup()
+    await user.click(screen.getByRole('button', { name: 'Export backup' }))
+    await aMomentLater()
+    await user.click(screen.getByRole('button', { name: 'Today' }))
+
+    const { button, row } = await menu()
+    expect(button).not.toHaveAccessibleDescription()
+    expect(row).toHaveTextContent(/^BackupToday$/)
+  })
+})

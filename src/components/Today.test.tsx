@@ -230,11 +230,11 @@ describe('the menu', () => {
     expect(menu.getByText(line)).toBeInTheDocument()
   })
 
-  it('shows which build is running, until the Backup screen takes it (spec §2.6)', async () => {
+  it('leaves the build stamp to the Backup screen (spec §2.6)', async () => {
     itIs('2026-11-12T10:00')
     await launch()
     const { menu } = await openMenu()
-    expect(menu.getByText(/^Build \S+$/)).toBeInTheDocument()
+    expect(menu.queryByText(/^Build /)).not.toBeInTheDocument()
   })
 
   it('says when the Appearance could not be saved, and keeps the look as it was', async () => {
