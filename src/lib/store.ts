@@ -225,74 +225,93 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     for (const listener of listeners) listener()
   }
 
+  /** The write in progress. Each write waits its turn, so its rules see what the write before it saved. */
+  let queue: Promise<unknown> = Promise.resolve()
+  function inTurn<A extends unknown[]>(write: (...args: A) => Promise<void>) {
+    return (...args: A) => {
+      const turn = queue.then(() => write(...args))
+      queue = turn.catch(() => {})
+      return turn
+    }
+  }
+
+  async function saveSetupDraft(quarter: Quarter, draft: SetupDraft) {
+    refuseUnlessSetupTarget(quarter)
+    for (const quest of QUESTS) {
+      // A finished Quest never turns back into a Draft (spec §10)
+      if (isFinished(quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
+        throw new StoreError('not-allowed', `The ${quest} Quest is finished, so the setup Draft can't hold it.`)
+      }
+    }
+    await commit([[`setup:${quarter}`, draft]], {
+      ...snapshot,
+      setupDrafts: withEntry(snapshot.setupDrafts, quarter, draft),
+    })
+  }
+
+  async function switchSetupTarget(from: Quarter, to: Quarter) {
+    refuseUnlessSetupTarget(from)
+    refuseUnlessSetupTarget(to)
+    if (from === to || snapshot.setupDrafts[to] || snapshot.quarters[to]) {
+      throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
+    }
+    if (isFinished(from, 'work')) {
+      throw new StoreError('not-allowed', `The Work Quest is finished, so setup stays on ${labelOf(from)}.`)
+    }
+    // With nothing typed yet, a blank Draft still keeps the new target
+    const draft = snapshot.setupDrafts[from] ?? { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
+    await commit(
+      [
+        [`setup:${from}`, undefined],
+        [`setup:${to}`, draft],
+      ],
+      { ...snapshot, setupDrafts: withEntry(withEntry(snapshot.setupDrafts, from, undefined), to, draft) },
+    )
+  }
+
+  async function finishQuest(quarter: Quarter, quest: Quest, typed: QuestContent) {
+    refuseUnlessSetupTarget(quarter)
+    if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${quest} Quest is already finished.`)
+    if (quest === 'life' && !isFinished(quarter, 'work')) {
+      throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
+    }
+    const content = tidyQuest(typed)
+    if (!isComplete(content)) {
+      throw new StoreError(
+        'incomplete',
+        'Only a complete Quest can be finished: every part but the Obstacle written, and one to five items in each list.',
+      )
+    }
+    const record = snapshot.quarters[quarter] ?? { versions: { work: [], life: [] }, reflections: {} }
+    const finished: QuarterRecord = {
+      ...record,
+      versions: { ...record.versions, [quest]: [{ savedOn: today(), content }] },
+    }
+    const draft = snapshot.setupDrafts[quarter]
+    // Work first: finishing it moves setup on to Life, part 1. Finishing Life sets the Quarter up.
+    const left: SetupDraft | undefined =
+      quest === 'work' ? { at: { quest: 'life', part: 'mainQuest' }, work: {}, life: draft?.life ?? {} } : undefined
+    await commit(
+      [
+        [`quarter:${quarter}`, finished],
+        [`setup:${quarter}`, left],
+      ],
+      {
+        ...snapshot,
+        quarters: withEntry(snapshot.quarters, quarter, finished),
+        setupDrafts: withEntry(snapshot.setupDrafts, quarter, left),
+      },
+    )
+  }
+
   return {
     snapshot: () => snapshot,
     subscribe(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    async saveSetupDraft(quarter, draft) {
-      refuseUnlessSetupTarget(quarter)
-      for (const quest of QUESTS) {
-        // A finished Quest never turns back into a Draft (spec §10)
-        if (isFinished(quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
-          throw new StoreError('not-allowed', `The ${quest} Quest is finished, so the setup Draft can't hold it.`)
-        }
-      }
-      await commit([[`setup:${quarter}`, draft]], {
-        ...snapshot,
-        setupDrafts: withEntry(snapshot.setupDrafts, quarter, draft),
-      })
-    },
-    async switchSetupTarget(from, to) {
-      refuseUnlessSetupTarget(from)
-      refuseUnlessSetupTarget(to)
-      if (from === to || snapshot.setupDrafts[to] || snapshot.quarters[to]) {
-        throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
-      }
-      if (isFinished(from, 'work')) {
-        throw new StoreError('not-allowed', `The Work Quest is finished, so setup stays on ${labelOf(from)}.`)
-      }
-      // With nothing typed yet, a blank Draft still keeps the new target
-      const draft = snapshot.setupDrafts[from] ?? { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
-      await commit(
-        [
-          [`setup:${from}`, undefined],
-          [`setup:${to}`, draft],
-        ],
-        { ...snapshot, setupDrafts: withEntry(withEntry(snapshot.setupDrafts, from, undefined), to, draft) },
-      )
-    },
-    async finishQuest(quarter, quest, typed) {
-      refuseUnlessSetupTarget(quarter)
-      if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${quest} Quest is already finished.`)
-      if (quest === 'life' && !isFinished(quarter, 'work')) {
-        throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
-      }
-      const content = tidyQuest(typed)
-      if (!isComplete(content)) {
-        throw new StoreError('incomplete', 'Only a complete Quest can be finished: every part but the Obstacle written, and one to five items in each list.')
-      }
-      const record = snapshot.quarters[quarter] ?? { versions: { work: [], life: [] }, reflections: {} }
-      const finished: QuarterRecord = {
-        ...record,
-        versions: { ...record.versions, [quest]: [{ savedOn: today(), content }] },
-      }
-      const draft = snapshot.setupDrafts[quarter]
-      // Work first: finishing it moves setup on to Life, part 1. Finishing Life sets the Quarter up.
-      const left: SetupDraft | undefined =
-        quest === 'work' ? { at: { quest: 'life', part: 'mainQuest' }, work: {}, life: draft?.life ?? {} } : undefined
-      await commit(
-        [
-          [`quarter:${quarter}`, finished],
-          [`setup:${quarter}`, left],
-        ],
-        {
-          ...snapshot,
-          quarters: withEntry(snapshot.quarters, quarter, finished),
-          setupDrafts: withEntry(snapshot.setupDrafts, quarter, left),
-        },
-      )
-    },
+    saveSetupDraft: inTurn(saveSetupDraft),
+    switchSetupTarget: inTurn(switchSetupTarget),
+    finishQuest: inTurn(finishQuest),
   }
 }

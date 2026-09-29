@@ -51,6 +51,19 @@ describe('open', () => {
   })
 })
 
+describe('writes made back to back', () => {
+  it('land in order, each building on the one before', async () => {
+    const store = await open(clock)
+    const typingLife: SetupDraft = { at: { quest: 'life', part: 'whyItMatters' }, work: {}, life: { mainQuest: 'run 5K' } }
+    await Promise.all([store.finishQuest('2026-Q4', 'work', quest), store.saveSetupDraft('2026-Q4', typingLife)])
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.quarters['2026-Q4']?.versions.work).toEqual([{ savedOn: '2026-09-29', content: quest }])
+      expect(snapshot.setupDrafts['2026-Q4']).toEqual(typingLife)
+    }
+  })
+})
+
 describe('data from a newer Cadence', () => {
   const newer = { schemaVersion: 2, lastBackupAt: null, appearance: 'dark' }
 
@@ -164,6 +177,13 @@ describe('finishQuest', () => {
       })
       expect(snapshot.setupDrafts['2026-Q4']).toEqual({ at: { quest: 'life', part: 'mainQuest' }, work: {}, life: {} })
     }
+  })
+
+  it('stores the Quarter and its Draft under their own keys (spec §13.2)', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    expect(await stored('quarter:2026-Q4')).toEqual(store.snapshot().quarters['2026-Q4'])
+    expect(await stored('setup:2026-Q4')).toEqual(store.snapshot().setupDrafts['2026-Q4'])
   })
 
   it('dates Version 1 by the Day it is saved on, even a minute after midnight', async () => {
