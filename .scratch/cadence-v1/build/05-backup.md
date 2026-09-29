@@ -15,7 +15,7 @@ The owner can export everything to Files, and import a backup to replace everyth
 ## Scope
 
 1. **Store:** `exportBackup` (returns a `File` with every key, Drafts included) and `markBackedUp`. `readBackup` returns a Preview or a Problem, checking the whole file and migrating older schemas. `replaceWith` works in one transaction and sets `lastBackupAt` to the backup's `exportedAt`.
-2. **The Backup screen:** the last backup, the live `persisted()` status (or the Safari warning), Export, Import, the note, and the build stamp at the foot.
+2. **The Backup screen:** the last backup, the live `persisted()` status (or the Safari warning), Export, Import, the note, and the build stamp at the foot. The stamp moves there from the foot of the menu, where slice 4 kept it in the meantime.
 3. **Export:** Web Share with a file inside the tap handler, and the `<a download>` fallback. It counts as made on share success or when the download starts.
 4. **Import:** the Files picker, a Problem message or the preview, and the three options.
 5. **Backup due:** the gold dot on the menu button and the gold time in the Backup row (§6.3).
