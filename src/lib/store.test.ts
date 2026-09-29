@@ -104,10 +104,31 @@ describe('data from a newer Cadence', () => {
     })
     expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.setAppearance('light'))).toMatchObject({ reason: 'read-only' })
     itIs('2026-10-01T09:00') // read-only comes first, before any other rule
     expect(await refusal(store.saveSetupDraft('2026-Q3', draft))).toMatchObject({ reason: 'read-only' })
     expect((await open(clock)).snapshot()).toMatchObject({ quarters: {}, setupDrafts: {} })
     expect(await stored('meta')).toEqual(newer)
+  })
+})
+
+describe('setAppearance', () => {
+  it('keeps the choice in meta, across a reopen, and leaves the rest of meta as it was (spec §2.8)', async () => {
+    await leftOnPhone('meta', { schemaVersion: 1, lastBackupAt: 1790000000000, appearance: 'system' })
+    const store = await open(clock)
+    await store.setAppearance('dark')
+
+    const meta = { schemaVersion: 1, lastBackupAt: 1790000000000, appearance: 'dark' }
+    expect(store.snapshot().meta).toEqual(meta)
+    expect((await open(clock)).snapshot().meta).toEqual(meta)
+  })
+
+  it('tells the listeners once it has landed', async () => {
+    const store = await open(clock)
+    const seen: string[] = []
+    store.subscribe(() => seen.push(store.snapshot().meta.appearance))
+    await store.setAppearance('light')
+    expect(seen).toEqual(['light'])
   })
 })
 

@@ -75,7 +75,9 @@ export interface Store {
   snapshot(): Snapshot
   /** Calls `listener` after every write; returns the unsubscribe */
   subscribe(listener: () => void): () => void
-  /** The phone's local date, by the clock the store was opened with */
+  /** The moment, by the clock the store was opened with */
+  now(): Date
+  /** The phone's local date, by that clock */
   today(): LocalDate
   /** Keeps setup's words as typed, and where it was left (spec §5.4) */
   saveSetupDraft(quarter: Quarter, draft: SetupDraft): Promise<void>
@@ -83,6 +85,8 @@ export interface Store {
   switchSetupTarget(from: Quarter, to: Quarter): Promise<void>
   /** Makes the Quest's Version 1 and clears its words from the setup Draft, in one transaction (spec §5.3) */
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
+  /** Keeps the Appearance chosen in the menu (spec §2.8) */
+  setAppearance(appearance: Appearance): Promise<void>
 }
 
 /** Why a write didn't happen */
@@ -341,8 +345,14 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     )
   }
 
+  async function setAppearance(appearance: Appearance) {
+    const meta: Meta = { ...snapshot.meta, appearance }
+    await commit([['meta', meta]], { ...snapshot, meta })
+  }
+
   return {
     snapshot: () => snapshot,
+    now: clock,
     today,
     subscribe(listener) {
       listeners.add(listener)
@@ -351,5 +361,6 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     saveSetupDraft: inTurn(saveSetupDraft),
     switchSetupTarget: inTurn(switchSetupTarget),
     finishQuest: inTurn(finishQuest),
+    setAppearance: inTurn(setAppearance),
   }
 }
