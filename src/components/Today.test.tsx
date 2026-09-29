@@ -351,6 +351,33 @@ describe('Reflections (spec §7)', () => {
     expect(page('Work').queryByText('Pages next')).not.toBeInTheDocument()
   })
 
+  it("saves into the new Day after midnight, leaving yesterday's as it was (spec §7.1)", async () => {
+    const user = userEvent.setup()
+    itIs('2026-11-12T23:58')
+    await reflected('work', 'Pages next')
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Edit today's Reflection" }))
+    expect(popup('Work').getByText('You can change it until midnight.')).toBeInTheDocument()
+
+    itIs('2026-11-13T00:01')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    const work = popup('Work')
+    expect(work.getByText('Work, Fri 13 Nov')).toBeInTheDocument()
+    expect(work.queryByText('You can change it until midnight.')).not.toBeInTheDocument()
+    await user.clear(work.getByRole('textbox', { name: 'Reflection' }))
+    expect(work.getByRole('button', { name: 'Save' })).toBeDisabled() // nothing to remove today
+    await user.keyboard('Pages next, still')
+    await user.click(work.getByRole('button', { name: 'Save' }))
+
+    expect(await page('Work').findByText('Pages next, still')).toBeInTheDocument()
+    expect((await open(() => now)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
+      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+      '2026-11-13': {
+        work: { text: 'Pages next, still', prompt: 'Looking at the week so far, are your Commitments actually moving your Success Metrics?' },
+      },
+    })
+  })
+
   it('removes a saved one once it is emptied, bringing back the pill', async () => {
     const user = userEvent.setup()
     await reflected('life', 'Ran 4K')
@@ -420,7 +447,7 @@ describe('Reflections (spec §7)', () => {
     expect((await open(() => now)).snapshot().quarters['2026-Q4']?.reflections).toEqual({})
   })
 
-  it('refuses at the last midnight even when the next Quarter, set up, has taken over Today', async () => {
+  it('refuses at the last midnight even when the next Quarter is set up, and hands Today over once it closes', async () => {
     const user = userEvent.setup()
     const december = await open(() => new Date('2026-12-20T10:00'))
     await december.finishQuest('2027-Q1', 'work', work)
@@ -432,10 +459,40 @@ describe('Reflections (spec §7)', () => {
 
     itIs('2027-01-01T00:01')
     act(() => void document.dispatchEvent(new Event('visibilitychange')))
-    expect(screen.getByRole('img', { name: 'Day 1 of 90' })).toBeInTheDocument()
     await user.click(popup('Work').getByRole('button', { name: 'Save' }))
     expect(await screen.findByRole('alertdialog')).toHaveTextContent("Q4 2026 ended at midnight, so this can't be saved.")
     expect((await open(() => now)).snapshot().quarters['2027-Q1']?.reflections).toEqual({})
+
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(screen.getByRole('img', { name: 'Day 1 of 90' })).toBeInTheDocument()
+  })
+
+  it("stays over Today at the last midnight, when a Draft for the next Quarter would resume setup, so its words aren't lost", async () => {
+    const user = userEvent.setup()
+    const december = await open(() => new Date('2026-12-20T10:00'))
+    await december.saveSetupDraft('2027-Q1', {
+      at: { quest: 'work', part: 'whyItMatters' },
+      work: { mainQuest: 'write the book' },
+      life: {},
+    })
+    itIs('2026-12-31T23:58')
+    await launch()
+    await user.click(page('Work').getByRole('button', { name: "Write today's Reflection" }))
+    await user.keyboard('The last Day')
+
+    itIs('2027-01-01T00:01')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    await user.click(popup('Work').getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent("Q4 2026 ended at midnight, so this can't be saved.")
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    expect(popup('Work').getByRole('textbox', { name: 'Reflection' })).toHaveValue('The last Day')
+
+    // Once it closes, Cadence moves on to where the date says: setup, resumed
+    await user.click(popup('Work').getByRole('button', { name: 'Cancel' }))
+    await user.click(screen.getByRole('button', { name: 'Discard' }))
+    expect(screen.getByText('Work Quest, part 2 of 6')).toBeInTheDocument()
   })
 
   it('keeps the text in the field when the save fails', async () => {

@@ -65,15 +65,21 @@ interface Props {
   quarter: Quarter
   /** The menu's Backup row */
   onBackup: () => void
+  /** A Reflection popup opens or closes */
+  onReflecting: (open: boolean) => void
 }
 
-export function Today({ quarter, onBackup }: Props) {
+export function Today({ quarter, onBackup, onReflecting }: Props) {
   const { today } = useCadence()
   const words = wordsFor(quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   /** The Quest whose Reflection popup is open */
   const [reflecting, setReflecting] = useState<Quest | null>(null)
+  const reflect = (quest: Quest | null) => {
+    setReflecting(quest)
+    onReflecting(quest !== null)
+  }
   const menuButton = useRef<HTMLButtonElement>(null)
   const closeMenu = useCallback(() => {
     setMenuOpen(false)
@@ -92,7 +98,7 @@ export function Today({ quarter, onBackup }: Props) {
         <Pages
           quarter={quarter}
           reflectionsNote={words.reflectionsNote}
-          onReflect={words.canReflect ? setReflecting : undefined}
+          onReflect={words.canReflect ? reflect : undefined}
         />
       </main>
       {menuOpen && (
@@ -105,7 +111,7 @@ export function Today({ quarter, onBackup }: Props) {
         />
       )}
       {reflecting && (
-        <ReflectionPopup key={reflecting} quest={reflecting} quarter={quarter} onClose={() => setReflecting(null)} />
+        <ReflectionPopup key={reflecting} quest={reflecting} quarter={quarter} onClose={() => reflect(null)} />
       )}
       {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}
     </>

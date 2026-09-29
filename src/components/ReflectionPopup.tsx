@@ -13,17 +13,18 @@ import { FailedSave, failureOf } from './FailedSave'
 
 interface Props {
   quest: Quest
-  /** The Quarter on Today when the popup opened */
+  /** The Quarter on Today, which the app shell holds while the popup is open */
   quarter: Quarter
   onClose: () => void
 }
 
-export function ReflectionPopup({ quest, quarter: openedIn, onClose }: Props) {
+export function ReflectionPopup({ quest, quarter, onClose }: Props) {
   const { snapshot, today, saveReflection, removeReflection } = useCadence()
-  /** A save belongs to the Quarter the popup opened in, even once the next has taken over Today at midnight */
-  const [quarter] = useState(openedIn)
-  /** Today's Reflection as it was when the popup opened: Save waits for a change from it */
-  const [saved] = useState(() => reflectionOn(snapshot, today, quest)?.text ?? '')
+  /**
+   * Today's Reflection, which Save waits for a change from. It follows the date: after midnight it's the new Day's,
+   * since a save belongs to the Day it's made on (spec §7.1).
+   */
+  const saved = reflectionOn(snapshot, today, quest)?.text ?? ''
   const [text, setText] = useState(saved)
   const field = useRef<HTMLTextAreaElement>(null)
   const changed = tidyReflection(text) !== saved

@@ -4,6 +4,7 @@ import { Setup } from './components/Setup'
 import { Today } from './components/Today'
 import { CadenceContext, useCadence } from './hooks/useCadence'
 import { applyAppearance } from './lib/appearance'
+import type { Quarter } from './lib/quarters'
 import type { Store } from './lib/store'
 
 export function App({ store }: { store: Store }) {
@@ -27,6 +28,11 @@ function Screens() {
   if (settingUp && !inSetup) setInSetup(true)
   /** The Backup screen is open, from Today's menu or from a blank setup */
   const [backupFrom, setBackupFrom] = useState<'today' | 'setup'>()
+  /**
+   * The Quarter on Today while a Reflection popup is open there: midnight doesn't move the screen out from under it,
+   * so a save refused at the Quarter's end keeps its words (spec §7.1)
+   */
+  const [reflectingIn, setReflectingIn] = useState<Quarter>()
 
   if (backupFrom) {
     // An import can change the screen underneath, so leaving Backup goes where the data now says (spec §12.3)
@@ -37,8 +43,15 @@ function Screens() {
     return <Backup back={backupFrom === 'today' ? 'Today' : 'Close'} onBack={leave} />
   }
   // Setup places the banners itself, inside the screen it fits to the keyboard
-  if (inSetup) {
+  if (inSetup && !reflectingIn) {
     return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} onRestore={() => setBackupFrom('setup')} />
   }
-  return <Today quarter={screen.quarter} onBackup={() => setBackupFrom('today')} />
+  const quarter = reflectingIn ?? screen.quarter
+  return (
+    <Today
+      quarter={quarter}
+      onBackup={() => setBackupFrom('today')}
+      onReflecting={(open) => setReflectingIn(open ? quarter : undefined)}
+    />
+  )
 }
