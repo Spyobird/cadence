@@ -19,6 +19,10 @@
   --on-gold: #17140A;
   --danger: light-dark(#C0392B, #FF7A66);
   --on-danger: light-dark(#FFFFFF, #1A0703);
+  --shadow: light-dark(rgb(20 24 30 / 0.18), rgb(0 0 0 / 0.5));
+
+  /* One easing, for every transition and animation (DESIGN.md) */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 :root[data-look='light'] {
   color-scheme: light;
@@ -61,8 +65,11 @@
   --text-numeral: 48px;
   --text-numeral--line-height: 1;
 
-  /* One easing for every transition (DESIGN.md) */
-  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* The only shadow: under the popup and sheets (DESIGN.md) */
+  --shadow-*: initial;
+  --shadow-sheet: 0 20px 60px var(--shadow);
+
+  --default-transition-timing-function: var(--ease);
 }
 
 /* A 22 px side gutter, or the safe-area inset if that's larger */
@@ -116,13 +123,13 @@ body {
 /* Only in answer to a tap (DESIGN.md): a setup step slides in, and a sheet rises over a fading scrim */
 @media (prefers-reduced-motion: no-preference) {
   .step-in {
-    animation: step-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: step-in 0.2s var(--ease);
   }
   .sheet-in {
-    animation: sheet-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: sheet-in 0.3s var(--ease);
   }
   .fade-in {
-    animation: fade-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: fade-in 0.2s var(--ease);
   }
 }
 @keyframes step-in {

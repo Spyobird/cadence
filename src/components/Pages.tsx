@@ -3,25 +3,30 @@
 
 import { useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
+import { currentVersion, type Quarter } from '../lib/quarters'
 import { NAMES, QUESTS } from '../lib/store'
 import { QuestPage } from './QuestPage'
-import type { TodayScreen } from './Today'
 
-export function Pages({ screen }: { screen: TodayScreen }) {
+interface Props {
+  quarter: Quarter
+  /** At the foot of each page, while no Reflection can be written yet */
+  reflectionsNote?: string
+}
+
+export function Pages({ quarter, reflectionsNote }: Props) {
   const { snapshot } = useCadence()
-  const versions = snapshot.quarters[screen.quarter]?.versions
   const pager = useRef<HTMLDivElement>(null)
   const [inView, setInView] = useState(0)
   /** The page a tapped tab is scrolling to, so the dot doesn't flick back as the scroll passes through */
-  const heading = useRef<number | null>(null)
+  const scrollingTo = useRef<number | null>(null)
 
   function show(index: number) {
     const el = pager.current
     if (!el) return
-    heading.current = index
+    scrollingTo.current = index
     setInView(index)
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollTo({ left: index * el.clientWidth, behavior: still ? 'auto' : 'smooth' })
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ left: index * el.clientWidth, behavior: reducedMotion ? 'auto' : 'smooth' })
   }
 
   // A swipe moves the dot once the page is past halfway
@@ -29,8 +34,8 @@ export function Pages({ screen }: { screen: TodayScreen }) {
     const el = pager.current
     if (!el?.clientWidth) return
     const index = Math.round(el.scrollLeft / el.clientWidth)
-    if (heading.current !== null) {
-      if (index === heading.current) heading.current = null
+    if (scrollingTo.current !== null) {
+      if (index === scrollingTo.current) scrollingTo.current = null
       return
     }
     setInView(index)
@@ -59,12 +64,16 @@ export function Pages({ screen }: { screen: TodayScreen }) {
         ref={pager}
         onScroll={onScroll}
         // A finger on the pages takes over from a tapped tab's scroll
-        onTouchStart={() => (heading.current = null)}
+        onTouchStart={() => (scrollingTo.current = null)}
         className="flex snap-x snap-mandatory items-start overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {QUESTS.map((quest) => {
-          const content = versions?.[quest].at(-1)?.content
-          return content && <QuestPage key={quest} quest={quest} screen={screen} content={content} />
+          const version = currentVersion(snapshot, quarter, quest)
+          return (
+            version && (
+              <QuestPage key={quest} quest={quest} quarter={quarter} content={version.content} reflectionsNote={reflectionsNote} />
+            )
+          )
         })}
       </div>
     </>

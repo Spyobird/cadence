@@ -62,6 +62,14 @@ export const SCAFFOLD: Record<Part, PartWords> = {
 /** The parts in order */
 export const PARTS = Object.keys(SCAFFOLD) as Part[]
 
+/**
+ * A Quest's parts in order, each with its words, as they're shown wherever the Quest is shown: an empty part is left
+ * out, and only the Obstacle can be empty (spec §4.1)
+ */
+export function shownParts(content: QuestContent): [Part, QuestContent[Part]][] {
+  return PARTS.map((part): [Part, QuestContent[Part]] => [part, content[part]]).filter(([, words]) => words.length > 0)
+}
+
 /** More than spaces */
 export const isWritten = (text: string) => text.trim() !== ''
 

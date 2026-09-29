@@ -26,6 +26,6 @@ function Screens() {
   if (settingUp && !inSetup) setInSetup(true)
 
   // Setup places the banners itself, inside the screen it fits to the keyboard
-  if (inSetup || settingUp) return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} />
-  return <Today screen={screen} />
+  if (inSetup) return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} />
+  return <Today quarter={screen.quarter} />
 }

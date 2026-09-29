@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  currentVersion,
   dayOf,
   daysUntil,
   endOf,
@@ -13,6 +14,7 @@ import {
   screenFor,
   setupTarget,
   spanOf,
+  standingIn,
   weekdayDate,
 } from './quarters'
 import type { QuestContent, Snapshot } from './store'
@@ -99,6 +101,20 @@ describe('daysUntil', () => {
     ['2026-03-28', '2026-03-30', 2], // across the change to summer time, in zones that have one
   ] as const)('from %s to %s is %i days', (from, to, days) => {
     expect(daysUntil(from, to)).toBe(days)
+  })
+})
+
+describe('standingIn', () => {
+  it.each([
+    ['2026-09-29', { at: 'before', daysToGo: 2 }],
+    ['2026-09-30', { at: 'before', daysToGo: 1 }],
+    ['2026-10-01', { at: 'day', day: 1, daysLeft: 91 }],
+    ['2026-11-12', { at: 'day', day: 43, daysLeft: 49 }],
+    ['2026-12-31', { at: 'day', day: 92, daysLeft: 0 }],
+    ['2027-01-01', { at: 'past' }],
+    ['2027-02-14', { at: 'past' }],
+  ] as const)('on %s, Q4 2026 stands at %j', (date, standing) => {
+    expect(standingIn('2026-Q4', date)).toEqual(standing)
   })
 })
 
@@ -294,5 +310,42 @@ describe('screenFor', () => {
     it('does not count a Past Quarter with only its Work Quest finished as set up', () => {
       expect(screenFor(snapshotWith({ workOnly: ['2026-Q3'] }), '2026-11-01')).toEqual({ name: 'setup', quarter: '2026-Q4' })
     })
+  })
+})
+
+describe('currentVersion', () => {
+  const content = (mainQuest: string): QuestContent => ({
+    mainQuest,
+    whyItMatters: 'prove it',
+    successMetrics: ['v1 on the phone'],
+    whyItsExciting: 'it is mine',
+    obstacle: '',
+    commitments: ['Build every Saturday'],
+  })
+  const snapshot: Snapshot = {
+    quarters: {
+      '2026-Q4': {
+        versions: {
+          work: [
+            { savedOn: '2026-09-29', content: content('ship v1') },
+            { savedOn: '2026-11-12', content: content('ship v1 by December') },
+          ],
+          life: [],
+        },
+        reflections: {},
+      },
+    },
+    setupDrafts: {},
+    meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
+    readOnly: false,
+  }
+
+  it("is a Quest's newest Version", () => {
+    expect(currentVersion(snapshot, '2026-Q4', 'work')?.content.mainQuest).toBe('ship v1 by December')
+  })
+
+  it('is missing for a Quest not yet finished, or a Quarter with nothing stored', () => {
+    expect(currentVersion(snapshot, '2026-Q4', 'life')).toBeUndefined()
+    expect(currentVersion(snapshot, '2027-Q1', 'work')).toBeUndefined()
   })
 })

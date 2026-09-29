@@ -37,6 +37,7 @@ Two looks, **dark** and **light**, chosen by the **Appearance** control in the m
 | `--on-gold` | `#17140A` | `#17140A` | Text on a gold fill |
 | `--danger` | `#FF7A66` | `#C0392B` | The Safari-tab banner, the failed-save message |
 | `--on-danger` | `#1A0703` | `#FFFFFF` | Text on `--danger` |
+| `--shadow` | `#000000` at 50% | `#14181E` at 18% | The popup's and sheets' shadow, the only one |
 
 **Contrast (WCAG AA, checked 2026-09-29):**
 
@@ -110,7 +111,7 @@ Only in answer to a tap:
 - sheets rise;
 - a setup step slides in (about 0.2 s).
 
-One easing: `cubic-bezier(.2, .8, .2, 1)`. Nothing moves on its own, and everything respects `prefers-reduced-motion`.
+One easing: `cubic-bezier(.2, .8, .2, 1)`, the `--ease` token, which every transition uses by default. Nothing moves on its own, and everything respects `prefers-reduced-motion`.
 
 ## Icon
 

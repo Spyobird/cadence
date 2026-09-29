@@ -1,7 +1,7 @@
 // Pure date maths for Quarters and Days (spec §3). Dates are the phone's local calendar dates, written
 // "2026-11-12"; no time zone is stored.
 
-import type { Quest, Snapshot } from './store'
+import type { Quest, Snapshot, Version } from './store'
 
 /** A local calendar date, like "2026-11-12" */
 export type LocalDate = string
@@ -109,6 +109,19 @@ export function daysUntil(from: LocalDate, to: LocalDate): number {
   return dayNumber(...ymd(to)) - dayNumber(...ymd(from))
 }
 
+/** Where a date stands in a Quarter: before its Day 1, on one of its Days, or past its last */
+export type Standing =
+  | { at: 'before'; daysToGo: number }
+  | { at: 'day'; day: number; daysLeft: number }
+  | { at: 'past' }
+
+export function standingIn(quarter: Quarter, date: LocalDate): Standing {
+  const day = dayOf(date, quarter)
+  if (day === 'before') return { at: 'before', daysToGo: daysUntil(date, firstDayOf(quarter)) }
+  const length = lengthOf(quarter)
+  return day > length ? { at: 'past' } : { at: 'day', day, daysLeft: length - day }
+}
+
 /** The Days on which each of the Quarter's three months starts, which the ring marks with a longer tick */
 export function monthStartsOf(quarter: Quarter): number[] {
   const [year, q] = yearAndNumber(quarter)
@@ -153,9 +166,14 @@ export function setupTarget(today: LocalDate): Quarter {
   return daysLeft < LAST_DAYS ? nextQuarter(current) : current
 }
 
+/** The Quest as it stands: its newest Version, or undefined until it's finished */
+export function currentVersion(snapshot: Snapshot, quarter: Quarter, quest: Quest): Version | undefined {
+  return snapshot.quarters[quarter]?.versions[quest].at(-1)
+}
+
 /** A Quest is finished once it has a Version (spec §3) */
 export function isFinished(snapshot: Snapshot, quarter: Quarter, quest: Quest): boolean {
-  return (snapshot.quarters[quarter]?.versions[quest].length ?? 0) > 0
+  return currentVersion(snapshot, quarter, quest) !== undefined
 }
 
 /** A Quarter is set up once both of its Quests are finished */
