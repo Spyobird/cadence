@@ -1,7 +1,7 @@
 # Installable skeleton at the real address
 
 Type: build (HITL: the owner creates the repo, picks the icon, and runs the phone check)
-Status: open
+Status: done
 Blocked by: none
 
 ## Goal
@@ -47,9 +47,9 @@ Cadence installs from `https://spyobird.github.io/cadence/` on the iPhone. It ru
 
 - [x] `npm ci && tsc --noEmit && npm test -- --run && npm run build` pass on Node 24, locally and in Actions.
 - [x] `https://spyobird.github.io/cadence/` serves the placeholder, with its build stamp.
-- [ ] The owner has run the head and install checks (§15.2, steps 1–10). The results, with the iOS version, are recorded under `## Phone check` in this ticket.
-- [ ] Recorded: whether the in-app Appearance control stays (step 5), and whether splash images are needed (step 8). Any fix they need is a new build ticket, blocking slice 4.
-- [ ] If the head changed after the first install, the owner has re-added the icon.
+- [x] The owner has run the head and install checks (§15.2, steps 1–10). The results, with the iOS version, are recorded under `## Phone check` in this ticket.
+- [x] Recorded: whether the in-app Appearance control stays (step 5), and whether splash images are needed (step 8). Any fix they need is a new build ticket, blocking slice 4.
+- [x] If the head changed after the first install, the owner has re-added the icon. (It didn't change.)
 
 ## Build notes
 
@@ -59,17 +59,17 @@ Cadence installs from `https://spyobird.github.io/cadence/` on the iPhone. It ru
 
 ## Phone check
 
-iOS version:
+iOS version: 26.6.2 (checked 2026-09-29)
 
 | # | Check | Result |
 |---|---|---|
-| 1 | Installs from Share → Add to Home Screen; icon and name "Cadence" | |
-| 2 | Light: strip `#F4F5F7`, dark glyphs | |
-| 3 | Dark: strip `#0F1113`, light glyphs | |
-| 4 | Control Centre flip while open: strip follows without relaunch? | |
-| 5 | Placeholder switch (Light on a Dark phone, and the reverse): strip follows? **Decides whether the in-app control stays.** | |
-| 6 | Scroll the rows: nothing blurs at the top, nothing under the strip | |
-| 7 | `100dvh` fills with no bottom gap; build stamp clears the home indicator. Readout: inset top / innerHeight / screen.height | |
-| 8 | Launch without splash images, light and dark: what shows before first paint? **Decides whether splash images are needed.** | |
-| 9 | Push a trivial change, wait for the deploy, reopen from the app switcher (finds the update), then leave and reopen again: build stamp changes | |
-| 10 | Safari tab shows the red banner; Home Screen doesn't | |
+| 1 | Installs from Share → Add to Home Screen; icon and name "Cadence" | Pass: icon draft A on the Home Screen |
+| 2 | Light: strip `#F4F5F7`, dark glyphs || Pass |
+| 3 | Dark: strip `#0F1113`, light glyphs || Pass |
+| 4 | Control Centre flip while open: strip follows without relaunch? || Pass |
+| 5 | Placeholder switch (Light on a Dark phone, and the reverse): strip follows? **Decides whether the in-app control stays.** | Pass: the strip follows. **The in-app Appearance control stays.** Opens on System by default. |
+| 6 | Scroll the rows: nothing blurs at the top, nothing under the strip || Pass |
+| 7 | `100dvh` fills with no bottom gap; build stamp clears the home indicator. Readout: inset top / innerHeight / screen.height || Pass |
+| 8 | Launch without splash images, light and dark: what shows before first paint? **Decides whether splash images are needed.** | Pass: no wrong-colour flash. **No splash images needed.** |
+| 9 | Push a trivial change, wait for the deploy, reopen from the app switcher (finds the update), then leave and reopen again: build stamp changes | Pass: `4b77f9d` → `4e79d82` without deleting the icon |
+| 10 | Safari tab shows the red banner; Home Screen doesn't || Pass |
