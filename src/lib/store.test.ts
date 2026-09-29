@@ -98,6 +98,7 @@ describe('saveSetupDraft', () => {
 
     const reopened = await open(clock)
     expect(reopened.snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+    expect(reopened.snapshot().quarters).toEqual({}) // a setup Draft is never a Version
   })
 
   it('keeps a finished Quest out of the Draft', async () => {
