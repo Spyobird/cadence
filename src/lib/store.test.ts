@@ -104,6 +104,9 @@ describe('data from a newer Cadence', () => {
     })
     expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.saveEditDraft('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.discardEdit('2026-Q4', 'work'))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.saveQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.saveReflection('2026-Q4', 'work', 'Pages next'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.removeReflection('2026-Q4', 'work'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.setAppearance('light'))).toMatchObject({ reason: 'read-only' })
@@ -483,6 +486,220 @@ describe('Reflections', () => {
       })
     }
     expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({})
+  })
+})
+
+describe('an edit Draft', () => {
+  /** Q4 2026, set up on 29 Sep */
+  async function setUpQ4() {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
+    return store
+  }
+
+  it('keeps the words as typed, and when the edit started, across a reopen and across Days (spec §8)', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveEditDraft('2026-Q4', 'work', { ...quest, mainQuest: 'ship Cadence v1 t' })
+    itIs('2026-11-13T08:15')
+    const typed = { ...quest, mainQuest: 'ship Cadence v1 to', commitments: ['Build every Saturday morning', ''] }
+    await store.saveEditDraft('2026-Q4', 'work', typed)
+
+    const draft = { startedAt: new Date('2026-11-12T10:42').getTime(), content: typed }
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.editDrafts).toEqual({ '2026-Q4': { work: draft } })
+      expect(snapshot.quarters['2026-Q4']?.versions.work).toEqual([{ savedOn: '2026-09-29', content: quest }])
+    }
+    expect(await stored('edit:2026-Q4:work')).toEqual(draft)
+  })
+
+  it('is deleted once it matches the saved Version again, compared tidied, so the next edit starts afresh', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveEditDraft('2026-Q4', 'work', { ...quest, mainQuest: 'ship Cadence v2' })
+    await store.saveEditDraft('2026-Q4', 'work', { ...quest, mainQuest: ' ship Cadence v1', successMetrics: [...quest.successMetrics, ''] })
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.editDrafts).toEqual({})
+    }
+    expect(await stored('edit:2026-Q4:work')).toBeUndefined()
+
+    itIs('2026-11-12T11:05')
+    await store.saveEditDraft('2026-Q4', 'work', { ...quest, obstacle: 'late client calls' })
+    expect(store.snapshot().editDrafts['2026-Q4']?.work?.startedAt).toBe(new Date('2026-11-12T11:05').getTime())
+  })
+
+  it('is deleted by discardEdit, leaving the other Quest\'s', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveEditDraft('2026-Q4', 'work', { ...quest, mainQuest: 'ship Cadence v2' })
+    await store.saveEditDraft('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 24 minutes' })
+    await store.discardEdit('2026-Q4', 'work')
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(Object.keys(snapshot.editDrafts['2026-Q4'] ?? {})).toEqual(['life'])
+      expect(snapshot.quarters['2026-Q4']?.versions.work).toEqual([{ savedOn: '2026-09-29', content: quest }])
+    }
+    expect(await stored('edit:2026-Q4:work')).toBeUndefined()
+  })
+
+  it('is only for a finished Quest', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    expect(await refusal(store.saveEditDraft('2026-Q4', 'life', quest))).toMatchObject({ reason: 'not-allowed' })
+    expect(await refusal(store.saveEditDraft('2027-Q1', 'work', quest))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot().editDrafts).toEqual({})
+  })
+
+  it('is frozen with its Quarter at midnight, kept as it stood (spec §13.4)', async () => {
+    const store = await setUpQ4()
+    itIs('2026-12-31T23:58')
+    const typed = { ...quest, mainQuest: 'ship Cadence v2' }
+    await store.saveEditDraft('2026-Q4', 'work', typed)
+
+    itIs('2027-01-01T00:01')
+    for (const write of [
+      store.saveEditDraft('2026-Q4', 'work', { ...quest, mainQuest: 'ship Cadence v3' }),
+      store.discardEdit('2026-Q4', 'work'),
+    ]) {
+      expect(await refusal(write)).toMatchObject({
+        reason: 'quarter-ended',
+        message: "Q4 2026 ended at midnight, so this can't be saved.",
+      })
+    }
+    expect((await open(clock)).snapshot().editDrafts['2026-Q4']?.work?.content).toEqual(typed)
+  })
+})
+
+describe('saveQuest (spec §10)', () => {
+  const v2 = { ...quest, mainQuest: 'ship Cadence v2' }
+  const v3 = { ...quest, mainQuest: 'ship Cadence v3' }
+
+  /** Q4 2026, set up on 29 Sep */
+  async function setUpQ4() {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
+    return store
+  }
+
+  /** Work's Versions, in memory and as reopened, which must agree */
+  async function workVersions(store: Awaited<ReturnType<typeof open>>) {
+    const reopened = (await open(clock)).snapshot().quarters['2026-Q4']?.versions.work
+    expect(store.snapshot().quarters['2026-Q4']?.versions.work).toEqual(reopened)
+    return reopened
+  }
+
+  it('replaces Version 1 before Day 1, dated by its last save', async () => {
+    const store = await setUpQ4()
+    itIs('2026-09-30T08:00')
+    await store.saveQuest('2026-Q4', 'work', v2)
+    await store.saveQuest('2026-Q4', 'work', v3)
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-09-30', content: v3 }])
+  })
+
+  it('replaces the Day\'s Version when saved again that Day', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveQuest('2026-Q4', 'work', v2)
+    itIs('2026-11-12T21:30')
+    await store.saveQuest('2026-Q4', 'work', v3)
+    expect(await workVersions(store)).toEqual([
+      { savedOn: '2026-09-29', content: quest },
+      { savedOn: '2026-11-12', content: v3 },
+    ])
+  })
+
+  it('adds a Version on a later Day, and a save belongs to the Day it is made on', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T23:50')
+    await store.saveQuest('2026-Q4', 'work', v2)
+    itIs('2026-11-13T00:05')
+    await store.saveQuest('2026-Q4', 'work', v3)
+    expect(await workVersions(store)).toEqual([
+      { savedOn: '2026-09-29', content: quest },
+      { savedOn: '2026-11-12', content: v2 },
+      { savedOn: '2026-11-13', content: v3 },
+    ])
+  })
+
+  it('drops a Day\'s Version that ends up identical to the Version before it, compared tidied', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveQuest('2026-Q4', 'work', v2)
+    itIs('2026-11-12T21:30')
+    await store.saveQuest('2026-Q4', 'work', { ...quest, mainQuest: ' ship Cadence\nv1' })
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-09-29', content: quest }])
+
+    itIs('2026-11-13T09:00') // and a new Day's save that changes nothing adds nothing
+    await store.saveQuest('2026-Q4', 'work', quest)
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-09-29', content: quest }])
+  })
+
+  it('keeps Version 1 when it was made that Day, since a finished Quest never goes back to a Draft', async () => {
+    itIs('2026-10-20T09:00') // set up mid-quarter
+    const store = await setUpQ4()
+    await store.saveQuest('2026-Q4', 'work', v2)
+    await store.saveQuest('2026-Q4', 'work', quest)
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-10-20', content: quest }])
+  })
+
+  it('tidies the words, and deletes the edit Draft in the same save', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    const typed = { ...quest, mainQuest: ' ship Cadence\nv2 ', commitments: ['Build every Saturday morning', ''] }
+    await store.saveEditDraft('2026-Q4', 'work', typed)
+    await store.saveQuest('2026-Q4', 'work', typed)
+
+    expect(await workVersions(store)).toEqual([
+      { savedOn: '2026-09-29', content: quest },
+      { savedOn: '2026-11-12', content: { ...quest, mainQuest: 'ship Cadence v2' } },
+    ])
+    expect((await open(clock)).snapshot().editDrafts).toEqual({})
+  })
+
+  it.each<[string, Partial<QuestContent>]>([
+    ['no Main Quest', { mainQuest: ' ' }],
+    ['no Success Metrics', { successMetrics: [''] }],
+    ['no Commitments', { commitments: [] }],
+  ])('refuses a Quest with %s, keeping the Draft', async (_, gap) => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    const typed = { ...quest, ...gap }
+    await store.saveEditDraft('2026-Q4', 'work', typed)
+    expect(await refusal(store.saveQuest('2026-Q4', 'work', typed))).toMatchObject({ reason: 'incomplete' })
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-09-29', content: quest }])
+    expect((await open(clock)).snapshot().editDrafts['2026-Q4']?.work?.content).toEqual(typed)
+  })
+
+  it('accepts an emptied Obstacle', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:42')
+    await store.saveQuest('2026-Q4', 'work', { ...quest, obstacle: 'late client calls' })
+    itIs('2026-11-13T10:42')
+    await store.saveQuest('2026-Q4', 'work', { ...quest, obstacle: '  ' })
+    expect((await workVersions(store))?.map((version) => version.content.obstacle)).toEqual(['', 'late client calls', ''])
+  })
+
+  it('is refused once the Quarter has ended at midnight, and the Draft is frozen with it', async () => {
+    const store = await setUpQ4()
+    itIs('2026-12-31T23:58')
+    await store.saveEditDraft('2026-Q4', 'work', v2)
+    itIs('2027-01-01T00:01')
+    expect(await refusal(store.saveQuest('2026-Q4', 'work', v2))).toMatchObject({
+      reason: 'quarter-ended',
+      message: "Q4 2026 ended at midnight, so this can't be saved.",
+    })
+    expect(await workVersions(store)).toEqual([{ savedOn: '2026-09-29', content: quest }])
+    expect((await open(clock)).snapshot().editDrafts['2026-Q4']?.work?.content).toEqual(v2)
+  })
+
+  it('is only for a finished Quest', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    expect(await refusal(store.saveQuest('2026-Q4', 'life', quest))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot().quarters['2026-Q4']?.versions.life).toEqual([])
   })
 })
 

@@ -5,6 +5,8 @@ import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyva
 import { APPEARANCES, type Appearance } from './appearance'
 import { promptFor } from './prompts'
 import {
+  currentVersion,
+  dayOf,
   isFinished,
   isLocalDate,
   isPast,
@@ -68,6 +70,13 @@ export interface SetupDraft {
   life: QuestDraft
 }
 
+/** `edit:2026-Q4:work`: a finished Quest's words as typed in Edit, until Save or discard (spec §8) */
+export interface EditDraft {
+  /** When the edit started, epoch ms */
+  startedAt: number
+  content: QuestContent
+}
+
 export interface Meta {
   schemaVersion: number
   /** Epoch ms */
@@ -79,6 +88,7 @@ export interface Meta {
 export interface Snapshot {
   quarters: Partial<Record<Quarter, QuarterRecord>>
   setupDrafts: Partial<Record<Quarter, SetupDraft>>
+  editDrafts: Partial<Record<Quarter, Partial<Record<Quest, EditDraft>>>>
   meta: Meta
   /** The data is from a newer Cadence, so nothing can be saved (spec §13.4) */
   readOnly: boolean
@@ -99,6 +109,12 @@ export interface Store {
   switchSetupTarget(from: Quarter, to: Quarter): Promise<void>
   /** Makes the Quest's Version 1 and clears its words from the setup Draft, in one transaction (spec §5.3) */
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
+  /** Keeps an edit's words as typed, and when it started, until they match the saved Version again (spec §8) */
+  saveEditDraft(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
+  /** Deletes an edit's Draft, leaving the saved Version as it was */
+  discardEdit(quarter: Quarter, quest: Quest): Promise<void>
+  /** Makes today's Version of a finished Quest, and deletes its edit Draft, in one transaction (spec §8, §10) */
+  saveQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
   /** Keeps today's Reflection on a Quest, with a copy of the day's Prompt (spec §7.1) */
   saveReflection(quarter: Quarter, quest: Quest, text: string): Promise<void>
   /** Removes today's Reflection on a Quest */
@@ -180,6 +196,17 @@ export function tidyQuest(content: QuestContent): QuestContent {
   }
 }
 
+const samePart = (a: string | string[], b: string | string[]) => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * The parts of `typed` that read differently from `saved`, in order, once both are tidied: "changed" (which enables
+ * Save) and "identical" (which drops a Version) both compare this way (spec §4.3)
+ */
+export function changedParts(typed: QuestContent, saved: QuestContent): (keyof QuestContent)[] {
+  const [a, b] = [tidyQuest(typed), tidyQuest(saved)]
+  return (Object.keys(a) as (keyof QuestContent)[]).filter((part) => !samePart(a[part], b[part]))
+}
+
 /** A Reflection as it's saved, and as it's compared: trimmed at the ends only, keeping its line breaks (spec §4.3) */
 export const tidyReflection = (text: string) => text.trim()
 
@@ -188,6 +215,18 @@ export function isComplete(content: QuestContent): boolean {
   const { mainQuest, whyItMatters, whyItsExciting, successMetrics, commitments } = content
   const listOk = (items: string[]) => items.length >= 1 && items.length <= MAX_ITEMS
   return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
+}
+
+/** The Quest tidied, as it's kept, once it's complete: a Quest can only be finished or saved whole (spec §10) */
+function completeQuest(typed: QuestContent, as: 'finished' | 'saved'): QuestContent {
+  const content = tidyQuest(typed)
+  if (!isComplete(content)) {
+    throw new StoreError(
+      'incomplete',
+      `Only a complete Quest can be ${as}: every part but the Obstacle written, and one to five items in each list.`,
+    )
+  }
+  return content
 }
 
 /** A setup Draft before anything is typed: the Work Quest's Main Quest */
@@ -218,6 +257,7 @@ const SETUP_KEY = 'setup:'
 const EDIT_KEY = 'edit:'
 const quarterKey = (quarter: Quarter) => `${QUARTER_KEY}${quarter}`
 const setupKey = (quarter: Quarter) => `${SETUP_KEY}${quarter}`
+const editKey = (quarter: Quarter, quest: Quest) => `${EDIT_KEY}${quarter}:${quest}`
 
 /** What a Backup file holds (spec §12.2) */
 interface BackupFile {
@@ -405,12 +445,21 @@ function withEntry<R extends Record<string, unknown>, K extends keyof R & string
 
 /** What memory holds for the stored keys, meta among them */
 function snapshotOf(stored: Map<string, unknown>): Snapshot {
-  const snapshot: Snapshot = { quarters: {}, setupDrafts: {}, meta: stored.get('meta') as Meta, readOnly: false }
+  const snapshot: Snapshot = {
+    quarters: {},
+    setupDrafts: {},
+    editDrafts: {},
+    meta: stored.get('meta') as Meta,
+    readOnly: false,
+  }
   for (const [key, value] of stored) {
     if (key.startsWith(QUARTER_KEY)) {
       snapshot.quarters[key.slice(QUARTER_KEY.length) as Quarter] = value as QuarterRecord
     } else if (key.startsWith(SETUP_KEY)) {
       snapshot.setupDrafts[key.slice(SETUP_KEY.length) as Quarter] = value as SetupDraft
+    } else if (key.startsWith(EDIT_KEY)) {
+      const [quarter, quest] = key.slice(EDIT_KEY.length).split(':') as [Quarter, Quest]
+      snapshot.editDrafts[quarter] = { ...snapshot.editDrafts[quarter], [quest]: value as EditDraft }
     }
   }
   snapshot.readOnly = snapshot.meta.schemaVersion > SCHEMA_VERSION
@@ -527,13 +576,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     if (quest === 'life' && !isFinished(snapshot, quarter, 'work')) {
       throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
     }
-    const content = tidyQuest(typed)
-    if (!isComplete(content)) {
-      throw new StoreError(
-        'incomplete',
-        'Only a complete Quest can be finished: every part but the Obstacle written, and one to five items in each list.',
-      )
-    }
+    const content = completeQuest(typed, 'finished')
     const record = snapshot.quarters[quarter] ?? { versions: { work: [], life: [] }, reflections: {} }
     const finished: QuarterRecord = {
       ...record,
@@ -554,6 +597,63 @@ export async function open(clock: () => Date, connect = () => createStore('caden
         setupDrafts: withEntry(snapshot.setupDrafts, quarter, remaining),
       },
     )
+  }
+
+  /** The edit Drafts with one Quest's set to `draft`, or deleted when it's undefined */
+  function editDraftsWith(quarter: Quarter, quest: Quest, draft: EditDraft | undefined) {
+    const quarterDrafts = withEntry(snapshot.editDrafts[quarter] ?? {}, quest, draft)
+    return withEntry(snapshot.editDrafts, quarter, Object.keys(quarterDrafts).length > 0 ? quarterDrafts : undefined)
+  }
+
+  /** Edit is for a finished Quest in a Quarter that hasn't ended. Returns the Version it changes. */
+  function refuseUnlessEditable(quarter: Quarter, quest: Quest): Version {
+    refuseIfEnded(quarter)
+    const saved = currentVersion(snapshot, quarter, quest)
+    if (!saved) throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest isn't finished, so it can't be edited.`)
+    return saved
+  }
+
+  async function saveEditDraft(quarter: Quarter, quest: Quest, content: QuestContent) {
+    const saved = refuseUnlessEditable(quarter, quest)
+    // Typed back to the saved Version, there's nothing left to keep
+    const draft: EditDraft | undefined = changedParts(content, saved.content).length
+      ? { startedAt: snapshot.editDrafts[quarter]?.[quest]?.startedAt ?? clock().getTime(), content }
+      : undefined
+    await commit([[editKey(quarter, quest), draft]], { ...snapshot, editDrafts: editDraftsWith(quarter, quest, draft) })
+  }
+
+  /** One Version per Quest per Day, and none identical to the one before it (spec §10, ADR 0003) */
+  async function saveQuest(quarter: Quarter, quest: Quest, typed: QuestContent) {
+    refuseUnlessEditable(quarter, quest)
+    const content = completeQuest(typed, 'saved')
+    const record = snapshot.quarters[quarter]!
+    const date = today()
+    const versions = record.versions[quest]
+    // Before Day 1, every save replaces Version 1. From Day 1, saving again that Day replaces the Day's Version.
+    const replaces = dayOf(date, quarter) === 'before' || versions.at(-1)!.savedOn === date
+    const kept = replaces ? versions.slice(0, -1) : versions
+    const before = kept.at(-1)
+    const saved = before && changedParts(content, before.content).length === 0 ? kept : [...kept, { savedOn: date, content }]
+    const next: QuarterRecord = { ...record, versions: { ...record.versions, [quest]: saved } }
+    await commit(
+      [
+        [quarterKey(quarter), next],
+        [editKey(quarter, quest), undefined],
+      ],
+      {
+        ...snapshot,
+        quarters: withEntry(snapshot.quarters, quarter, next),
+        editDrafts: editDraftsWith(quarter, quest, undefined),
+      },
+    )
+  }
+
+  async function discardEdit(quarter: Quarter, quest: Quest) {
+    refuseUnlessEditable(quarter, quest)
+    await commit([[editKey(quarter, quest), undefined]], {
+      ...snapshot,
+      editDrafts: editDraftsWith(quarter, quest, undefined),
+    })
   }
 
   /** A Reflection that's only spaces is empty, so saving it removes the Day's Reflection on that Quest */
@@ -628,6 +728,9 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     saveSetupDraft: inTurn(saveSetupDraft),
     switchSetupTarget: inTurn(switchSetupTarget),
     finishQuest: inTurn(finishQuest),
+    saveEditDraft: inTurn(saveEditDraft),
+    discardEdit: inTurn(discardEdit),
+    saveQuest: inTurn(saveQuest),
     saveReflection: inTurn(saveReflection),
     removeReflection: inTurn(removeReflection),
     setAppearance: inTurn(setAppearance),

@@ -37,6 +37,7 @@ function snapshotWith({ setUp = [], workOnly = [], drafts = [] }: Partial<Record
   const snapshot: Snapshot = {
     quarters: {},
     setupDrafts: {},
+    editDrafts: {},
     meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
     readOnly: false,
   }
@@ -380,6 +381,7 @@ describe('currentVersion', () => {
       },
     },
     setupDrafts: {},
+    editDrafts: {},
     meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
     readOnly: false,
   }
@@ -404,6 +406,7 @@ describe('reflectionOn', () => {
       },
     },
     setupDrafts: {},
+    editDrafts: {},
     meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
     readOnly: false,
   }
