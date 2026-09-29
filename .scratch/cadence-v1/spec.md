@@ -424,6 +424,8 @@ One Version per Quest per Day ([ADR 0003](../../docs/adr/0003-one-version-per-qu
    - **Replace everything:** clears the store and writes the backup in one transaction, then sets `lastBackupAt` to the backup's `exportedAt`.
    - **Keep what's here:** cancels.
 
+**Restoring onto a fresh install:** blank setup has no menu, so while nothing is stored its first screen shows a quiet "Restore from a backup" link. It opens the Backup screen, with Close back to setup, and it goes once anything is typed. After an import, leaving the Backup screen opens wherever the data now says (§3.1). (The owner's choice, 30 Sep 2026: phone check step 4 needs it.)
+
 ---
 
 ## 13. Data layer
@@ -623,7 +625,7 @@ These weren't decided in a ticket. The spec settles them so the build doesn't ha
 - The Reflection popup's Cancel asks before discarding changes. A Reflection or edit saved just after the Quarter ended is refused with a message, and the text is kept (§7, §8).
 - Today re-reads the date when the page becomes visible and at midnight (§3).
 - The Archive's Day header, and its empty state (§11).
-- The Backup screen's wording and the import Problem messages (§12).
+- The Backup screen's wording and the import Problem messages (§12), and the fresh install's "Restore from a backup" link (§12.3).
 - The update reload waits until nothing is being written, and the app has no code-splitting (§2.3).
 - The Safari-tab banner's reason text (§2.7).
 - `setupTarget` in `quarters.ts`, `prompts.ts` as its own module, and `setAppearance` (§13.3).

@@ -18,6 +18,14 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - Today, with the day ring and both Quests: each Main Quest large, and the rest of the Quest folded away until it's asked for.
 - Today moves on to the new day at midnight, and when Cadence is opened again.
 - The menu, and Appearance (System, Light, Dark), kept from one launch to the next.
+- Backup export and import: one file holding everything, saved to Files, and imported after a preview to replace everything.
+- The Backup screen says when the last backup was, and whether the iPhone keeps Cadence's storage.
+- The menu shows a gold dot when a backup is due, and its Backup row says when the last one was.
+- A fresh install offers "Restore from a backup" on its first setup screen.
+
+### Changed
+
+- The build number moves from the menu to the foot of the Backup screen.
 
 ### Removed
 
