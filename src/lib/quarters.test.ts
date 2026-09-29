@@ -18,7 +18,9 @@ import {
   shortDate,
   spanOf,
   standingIn,
+  versionDay,
   weekdayDate,
+  whenStarted,
 } from './quarters'
 import type { QuestContent, Snapshot } from './store'
 
@@ -207,6 +209,30 @@ describe('shortDate', () => {
     ['2027-01-02', true, 'Sat 2 Jan 2027'],
   ] as const)('%s, with the year %s, reads %s', (date, withYear, line) => {
     expect(shortDate(date, withYear)).toBe(line)
+  })
+})
+
+describe('versionDay (spec §9)', () => {
+  it.each([
+    ['2026-11-12', '2026-Q4', '12 Nov · Day 43'],
+    ['2026-10-01', '2026-Q4', '1 Oct · Day 1'],
+    ['2026-12-31', '2026-Q4', '31 Dec · Day 92'],
+    ['2026-09-29', '2026-Q4', '29 Sep · before Day 1'],
+    ['2026-12-20', '2027-Q1', '20 Dec · before Day 1'],
+  ] as const)('a Version saved on %s in %s reads "%s"', (savedOn, quarter, label) => {
+    expect(versionDay(savedOn, quarter)).toBe(label)
+  })
+})
+
+describe('whenStarted (spec §8)', () => {
+  it.each([
+    ['2026-11-12T10:42', '2026-11-12', '10:42'],
+    ['2026-11-12T09:05', '2026-11-12', '09:05'],
+    ['2026-11-12T00:00', '2026-11-12', '00:00'],
+    ['2026-11-12T23:59', '2026-11-13', 'Thu 23:59'],
+    ['2026-11-12T10:42', '2026-11-20', 'Thu 10:42'],
+  ] as const)('an edit started at %s, seen on %s, reads "from %s"', (started, today, words) => {
+    expect(whenStarted(new Date(started).getTime(), today)).toBe(words)
   })
 })
 

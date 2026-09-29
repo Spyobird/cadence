@@ -174,6 +174,24 @@ export function shortDate(date: LocalDate, withYear = false): string {
   return withYear ? `${short} ${year}` : short
 }
 
+/** "12 Nov · Day 43", or "29 Sep · before Day 1": when a Version was saved, as a History row reads (spec §9) */
+export function versionDay(savedOn: LocalDate, quarter: Quarter): string {
+  const [, month, day] = ymd(savedOn)
+  const dayOfQuarter = dayOf(savedOn, quarter)
+  return `${day} ${MONTHS[month - 1]!.slice(0, 3)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
+}
+
+/**
+ * When an edit started, as "Your unsaved changes from … are still here." reads it: "10:42", or "Thu 10:42" on an
+ * earlier Day (spec §8)
+ */
+export function whenStarted(startedAt: number, today: LocalDate): string {
+  const at = new Date(startedAt)
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`
+  const on = localDate(at)
+  return on === today ? time : `${WEEKDAYS[weekdayOf(on)]!.slice(0, 3)} ${time}`
+}
+
 /**
  * When the last backup was: its date, how many calendar days ago, and whether it was this year. Undefined before
  * any backup. A backup dated after today, by another phone's clock, counts as today's.
