@@ -1,7 +1,7 @@
 # Writing a Quest (setup)
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 02
 
 ## Goal
@@ -34,7 +34,7 @@ On the phone, Cadence opens on setup and walks through both Quests, Work then Li
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed. Setting up on the phone works; the full phone check is after slice 4.
+- [x] Deployed. Setting up on the phone works; the full phone check is after slice 4.
 - [x] `CHANGELOG.md`: "Added: setting up a Quarter's Work and Life Quests".
 
 ## Build notes
@@ -54,3 +54,11 @@ On the phone, Cadence opens on setup and walks through both Quests, Work then Li
 - **Browser check:** headless Chrome at 390 px wide, light and dark, through part 1 with the questions open, a list, the Obstacle and the read-back. The keyboard itself waits for the phone check after slice 4.
 - **Phone feedback (29 Sep):** the owner didn't like the bar floating over the words while scrolling, nor the blank space the page could scroll into. A writing screen now fills the area the keyboard leaves visible (`useVisibleArea`, `.writing-screen`): only the words scroll, the bar sits under them, and the page doesn't scroll. `Banners` renders the banners inside it.
 - **Review (standards and spec):** fixed as above. Not changed: the placeholder copy "your one aim" (CONTEXT.md's own definition calls the Main Quest an aim), and tests seeding `meta` directly to stand in for a newer Cadence, as the store tests do.
+
+## Phone check
+
+Checked by the owner on 29 Sep 2026, in a Safari tab at `e488169`:
+
+- Setup works end to end, and the keyboard stays up from part to part.
+- Back and Next stay under the words when scrolling, and the page no longer scrolls into blank space.
+- A long opening can take much of the space above the keyboard. The owner judged it fine for now.
