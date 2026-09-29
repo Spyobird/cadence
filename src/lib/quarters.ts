@@ -9,6 +9,12 @@ export type LocalDate = string
 /** A calendar quarter, keyed like "2026-Q4" */
 export type Quarter = `${number}-Q${1 | 2 | 3 | 4}`
 
+/** The phone's local calendar date at that moment */
+export function localDate(moment: Date): LocalDate {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
+}
+
 const parts = (date: LocalDate) => date.split('-').map(Number) as [number, number, number]
 
 export function quarterOf(date: LocalDate): Quarter {
