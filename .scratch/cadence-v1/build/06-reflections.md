@@ -31,7 +31,7 @@ Under each Quest, the owner can write one optional Reflection per Day, guided by
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed. The owner runs the data-safe phone check (§15.2, after slice 6) and records it here.
+- [ ] Deployed, at `022146e` on 30 Sep 2026. The owner runs the data-safe phone check (§15.2, after slice 6) and records it here.
 - [x] `CHANGELOG.md`: "Added: a Reflection per Quest per Day".
 
 ## Build notes
