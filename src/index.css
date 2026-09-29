@@ -81,12 +81,24 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* The bar above the keyboard (spec §5.1): it rides on the keyboard, and clears the home indicator when it's down */
-.keyboard-bar {
+/*
+ * A writing screen fills the part of the page the keyboard leaves visible, and the page itself doesn't scroll:
+ * only the words scroll, and the bar sits under them, above the keyboard (spec §5.1)
+ */
+.writing-screen {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--kb, 0px);
+  top: var(--visible-top, 0px);
+  height: var(--visible-height, 100dvh);
+  display: flex;
+  flex-direction: column;
+}
+:root:has(.writing-screen) {
+  overscroll-behavior: none;
+}
+/* The bar clears the home indicator, or sits close on the keyboard */
+.keyboard-bar {
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 :root[data-keyboard='up'] .keyboard-bar {

@@ -49,17 +49,20 @@ export const keepsFocus = {
   onMouseDown: (event: SyntheticEvent) => event.preventDefault(),
 }
 
-/** Keeps `--kb` on <html> at the keyboard's height, so the bar can ride above it (visualViewport) */
-export function useKeyboardInset(): void {
+/**
+ * Keeps `--visible-top` and `--visible-height` on <html> at the part of the page the keyboard leaves visible
+ * (visualViewport), so a writing screen can fit it exactly: the bar sits under the words, above the keyboard.
+ */
+export function useVisibleArea(): void {
   useEffect(() => {
     const viewport = window.visualViewport
     if (!viewport) return
     const root = document.documentElement
     const measure = () => {
-      const height = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
-      root.style.setProperty('--kb', `${height}px`)
+      root.style.setProperty('--visible-top', `${viewport.offsetTop}px`)
+      root.style.setProperty('--visible-height', `${viewport.height}px`)
       // Taller than any bar iOS shows without the keyboard
-      root.dataset.keyboard = height > 60 ? 'up' : 'down'
+      root.dataset.keyboard = window.innerHeight - viewport.height > 60 ? 'up' : 'down'
     }
     measure()
     viewport.addEventListener('resize', measure)
@@ -67,7 +70,8 @@ export function useKeyboardInset(): void {
     return () => {
       viewport.removeEventListener('resize', measure)
       viewport.removeEventListener('scroll', measure)
-      root.style.removeProperty('--kb')
+      root.style.removeProperty('--visible-top')
+      root.style.removeProperty('--visible-height')
       delete root.dataset.keyboard
     }
   }, [])

@@ -99,7 +99,7 @@ Anything else that wants gold doesn't get it.
 - **The Reflection popup:** a box centred over a blurred, dimmed page, sized to the visible viewport so the keyboard never covers it.
 - **The menu:** one button, top right, opening a bottom sheet. No tab bar.
 - **Pushed screens** (Edit, History, Archive, Backup): a sticky header with the back or Cancel button left, the title centred and the action right.
-- **The bar above the keyboard** (setup and editing a part): Back and Next, kept above the keyboard with the `visualViewport` API.
+- **The bar above the keyboard** (setup and editing a part): Back and Next, kept above the keyboard with the `visualViewport` API. It's part of the screen, under the words, never floating over them: a writing screen fills the area the keyboard leaves visible, only the words scroll, and the page itself doesn't (the owner's phone check, 29 Sep 2026).
 
 ## Motion
 

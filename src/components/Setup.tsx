@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
-import { dropKeyboard, holdKeyboard, keepsFocus, useKeyboardInset } from '../lib/keyboard'
+import { dropKeyboard, holdKeyboard, keepsFocus, useVisibleArea } from '../lib/keyboard'
 import { isFinished, labelOf, type Quarter, spanOf } from '../lib/quarters'
 import { isPartWritten, PARTS, type Part } from '../lib/scaffold'
 import {
@@ -19,9 +19,10 @@ import {
   tidyQuest,
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
+import { Banners } from './Banners'
 import { plain, primary } from './buttons'
 import { FailedSave } from './FailedSave'
-import { Bar, PartScreen } from './PartScreen'
+import { Bar, PartScreen, Words } from './PartScreen'
 import { ReadBack } from './ReadBack'
 
 const EMPTY: QuestContent = {
@@ -68,7 +69,7 @@ export function Setup({ quarter: opened, onToday }: Props) {
   const stored = snapshot.setupDrafts[quarter]
   if (stored && stored.at.quest !== draft.at.quest) setDraft(stored)
 
-  useKeyboardInset()
+  useVisibleArea()
   // An update never reloads mid-setup (spec §2.3)
   useEffect(() => {
     setWriting(!setUp)
@@ -149,17 +150,20 @@ export function Setup({ quarter: opened, onToday }: Props) {
 
   if (setUp) {
     return (
-      <main className="mx-auto max-w-[600px] px-gutter pt-safe">
-        <h1 className="mt-16 text-l font-semibold">{labelOf(quarter)} is set up</h1>
-        <button type="button" className={`${primary} mt-8`} onClick={onToday}>
-          Go to Today
-        </button>
-      </main>
+      <>
+        <Banners />
+        <main className="mx-auto max-w-[600px] px-gutter pt-safe">
+          <h1 className="mt-16 text-l font-semibold">{labelOf(quarter)} is set up</h1>
+          <button type="button" className={`${primary} mt-8`} onClick={onToday}>
+            Go to Today
+          </button>
+        </main>
+      </>
     )
   }
 
-  return (
-    <main className="mx-auto max-w-[600px] px-gutter pt-safe pb-[calc(96px+var(--kb,0px))]">
+  const head = (
+    <>
       <div className="flex items-center justify-between gap-3 border-b border-line">
         <span className="py-3 text-s font-semibold tabular-nums">{`${labelOf(quarter)} · ${spanOf(quarter)}`}</span>
         {switchTo && (
@@ -177,12 +181,20 @@ export function Setup({ quarter: opened, onToday }: Props) {
           Picked up where you left off.
         </p>
       )}
+    </>
+  )
 
+  return (
+    <div className="writing-screen">
+      <Banners />
       {part === 'readBack' ? (
         <>
-          <h1 className={`mt-6 text-l font-semibold ${moved ? 'step-in' : ''}`}>Your {NAMES[quest]} Quest</h1>
-          <p className="mt-2 text-s text-faint">Read it through. Tap a part to change it.</p>
-          <ReadBack quest={quest} quarter={quarter} content={content} onPart={(to) => toPart(to, true)} disabled={finishing} />
+          <Words>
+            {head}
+            <h1 className={`mt-6 text-l font-semibold ${moved ? 'step-in' : ''}`}>Your {NAMES[quest]} Quest</h1>
+            <p className="mt-2 text-s text-faint">Read it through. Tap a part to change it.</p>
+            <ReadBack quest={quest} quarter={quarter} content={content} onPart={(to) => toPart(to, true)} disabled={finishing} />
+          </Words>
           <Bar>
             {/* Nothing else is saved while a Quest is finished: a save holding its words would be refused */}
             <button type="button" className={plain} onClick={() => toPart('commitments')} disabled={finishing}>
@@ -206,11 +218,11 @@ export function Setup({ quarter: opened, onToday }: Props) {
           onBack={index > 0 ? () => toPart(PARTS[index - 1]!) : undefined}
           nextLabel={fromReadBack ? 'Done' : 'Next'}
           slideIn={moved}
+          head={head}
         />
       )}
-
       {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}
-    </main>
+    </div>
   )
 }
 

@@ -1,18 +1,13 @@
 import { useState } from 'react'
-import { NewerDataBanner } from './components/NewerDataBanner'
+import { Banners } from './components/Banners'
 import { Placeholder } from './components/Placeholder'
-import { SafariBanner } from './components/SafariBanner'
 import { Setup } from './components/Setup'
 import { CadenceContext, useCadence } from './hooks/useCadence'
-import { isStandalone } from './lib/launch'
 import type { Store } from './lib/store'
 
 export function App({ store }: { store: Store }) {
-  const [standalone] = useState(isStandalone)
   return (
     <CadenceContext value={store}>
-      {!standalone && <SafariBanner />}
-      <NewerDataBanner />
       <Screens />
     </CadenceContext>
   )
@@ -26,6 +21,12 @@ function Screens() {
   const [inSetup, setInSetup] = useState(settingUp)
   if (settingUp && !inSetup) setInSetup(true)
 
+  // Setup places the banners itself, inside the screen it fits to the keyboard
   if (inSetup) return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} />
-  return <Placeholder quarter={screen.quarter} />
+  return (
+    <>
+      <Banners />
+      <Placeholder quarter={screen.quarter} />
+    </>
+  )
 }

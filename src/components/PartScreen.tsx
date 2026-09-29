@@ -24,9 +24,11 @@ interface Props {
   nextLabel: 'Next' | 'Done'
   /** Reached by a tap, so it slides in; motion only ever answers a tap */
   slideIn: boolean
+  /** What sits above the part, and scrolls with it */
+  head: ReactNode
 }
 
-export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn }: Props) {
+export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn, head }: Props) {
   const openingId = useId()
   const { opening, placeholder, hint, item } = SCAFFOLD[part]
   const written = isPartWritten(draft, part)
@@ -35,34 +37,37 @@ export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBa
 
   return (
     <>
-      <div className={`pt-6 ${slideIn ? 'step-in' : ''}`}>
-        <p id={openingId} className="mb-2.5 text-l text-given">
-          {opening(quest, quarter)}
-        </p>
-        {isList(part) ? (
-          <ListField
-            items={draft[part] ?? []}
-            onChange={(items) => onChange({ ...draft, [part]: items })}
-            onLeave={(items) => onNext({ ...draft, [part]: items })}
-            itemName={item!}
-            placeholder={placeholder}
-          />
-        ) : (
-          <PartLine
-            value={draft[part] ?? ''}
-            onChange={(value) => onChange({ ...draft, [part]: value })}
-            onEnter={() => written && onNext(draft)}
-            placeholder={placeholder}
-            labelledBy={openingId}
-          />
-        )}
-        <p className="mt-3.5 text-m text-faint">
-          {withEnd(hint, quarter)
-            .split('*')
-            .map((piece, i) => (i % 2 ? <em key={i}>{piece}</em> : piece))}
-        </p>
-        {part === 'mainQuest' && <Stuck quest={quest} quarter={quarter} />}
-      </div>
+      <Words>
+        {head}
+        <div className={`pt-6 ${slideIn ? 'step-in' : ''}`}>
+          <p id={openingId} className="mb-2.5 text-l text-given">
+            {opening(quest, quarter)}
+          </p>
+          {isList(part) ? (
+            <ListField
+              items={draft[part] ?? []}
+              onChange={(items) => onChange({ ...draft, [part]: items })}
+              onLeave={(items) => onNext({ ...draft, [part]: items })}
+              itemName={item!}
+              placeholder={placeholder}
+            />
+          ) : (
+            <PartLine
+              value={draft[part] ?? ''}
+              onChange={(value) => onChange({ ...draft, [part]: value })}
+              onEnter={() => written && onNext(draft)}
+              placeholder={placeholder}
+              labelledBy={openingId}
+            />
+          )}
+          <p className="mt-3.5 text-m text-faint">
+            {withEnd(hint, quarter)
+              .split('*')
+              .map((piece, i) => (i % 2 ? <em key={i}>{piece}</em> : piece))}
+          </p>
+          {part === 'mainQuest' && <Stuck quest={quest} quarter={quarter} />}
+        </div>
+      </Words>
       <Bar>
         <button type="button" className={plain} {...keepsFocus} onClick={onBack} disabled={!onBack}>
           Back
@@ -108,10 +113,19 @@ function Stuck({ quest, quarter }: { quest: Quest; quarter: Quarter }) {
   )
 }
 
-/** The bar above the keyboard: it rides on the keyboard, or clears the home indicator when it's down */
+/** The words of a writing screen: the only part that scrolls */
+export function Words({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <main className="mx-auto max-w-[600px] px-gutter pt-safe pb-6">{children}</main>
+    </div>
+  )
+}
+
+/** The bar under the words, above the keyboard: part of the screen, never over the words (spec §5.1) */
 export function Bar({ children }: { children: ReactNode }) {
   return (
-    <div className="keyboard-bar z-20 bg-void px-gutter pt-3">
+    <div className="keyboard-bar shrink-0 border-t border-line bg-void px-gutter pt-3">
       <div className="mx-auto flex max-w-[600px] items-center justify-between gap-3">{children}</div>
     </div>
   )
