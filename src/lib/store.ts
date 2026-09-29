@@ -3,7 +3,19 @@
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
 import type { Appearance } from './appearance'
-import { isFinished, isPast, labelOf, type LocalDate, localDate, nextQuarter, type Quarter, quarterOf } from './quarters'
+import {
+  isFinished,
+  isLocalDate,
+  isPast,
+  isQuarter,
+  labelOf,
+  lastDayOf,
+  type LocalDate,
+  localDate,
+  nextQuarter,
+  type Quarter,
+  quarterOf,
+} from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
 const SCHEMA_VERSION = 1
@@ -87,6 +99,32 @@ export interface Store {
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
   /** Keeps the Appearance chosen in the menu (spec §2.8) */
   setAppearance(appearance: Appearance): Promise<void>
+  /** The Backup: one file holding every stored key, Drafts included, named for today (spec §12.2) */
+  exportBackup(): File
+  /** Records that a backup was made: the share sheet finished, or the download started (spec §12.2) */
+  markBackedUp(): Promise<void>
+  /** Checks the whole of a Backup file before anything is touched (spec §12.3) */
+  readBackup(file: Blob): Promise<Preview | Problem>
+  /** Clears everything and writes the Backup in one transaction, dated by its export (spec §12.3) */
+  replaceWith(backup: Preview): Promise<void>
+}
+
+/** A checked Backup, ready to replace everything with (spec §12.3) */
+export interface Preview {
+  /** When it was exported, epoch ms */
+  exportedAt: number
+  /** Every Quarter it holds anything for, a Draft included, in calendar order */
+  quarters: Quarter[]
+  /** How many Reflections it holds, across its Quarters */
+  reflections: number
+  /** Every key it holds, checked */
+  data: Record<string, unknown>
+}
+
+/** Why a file can't be imported, in words the UI can show (spec §12.3) */
+export interface Problem {
+  problem: 'not-a-backup' | 'newer' | 'damaged'
+  message: string
 }
 
 /** Why a write didn't happen */
@@ -161,8 +199,144 @@ export function switchTargetFrom(snapshot: Snapshot, today: LocalDate, from: Qua
 /** The storage keys (spec §13.2, ADR 0004) */
 const QUARTER_KEY = 'quarter:'
 const SETUP_KEY = 'setup:'
+const EDIT_KEY = 'edit:'
 const quarterKey = (quarter: Quarter) => `${QUARTER_KEY}${quarter}`
 const setupKey = (quarter: Quarter) => `${SETUP_KEY}${quarter}`
+
+/** What a Backup file holds (spec §12.2) */
+interface BackupFile {
+  app: 'cadence'
+  schemaVersion: number
+  /** Epoch ms */
+  exportedAt: number
+  /** Every stored key, as stored */
+  data: Record<string, unknown>
+}
+
+const PROBLEMS = {
+  'not-a-backup': "This isn't a Cadence backup.",
+  newer: 'This backup is from a newer Cadence. Update Cadence first.',
+  damaged: "This backup is damaged and can't be used.",
+} as const
+const problem = (why: Problem['problem']): Problem => ({ problem: why, message: PROBLEMS[why] })
+
+// What schema 1 stores (spec §13.2), to check a Backup's every record against
+
+type Fields = Record<string, unknown>
+const isObject = (value: unknown): value is Fields => typeof value === 'object' && value !== null && !Array.isArray(value)
+/** An object with exactly these fields, each passing its check */
+const isRecord = (value: unknown, fields: Record<string, (field: unknown) => boolean>): value is Fields =>
+  isObject(value) &&
+  Object.keys(value).every((name) => Object.hasOwn(fields, name)) &&
+  Object.entries(fields).every(([name, check]) => check(value[name]))
+
+const isText = (value: unknown) => typeof value === 'string'
+const isList = (value: unknown) => Array.isArray(value) && value.every(isText)
+const isTime = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0
+const isQuest = (value: unknown): value is Quest => QUESTS.includes(value as Quest)
+const isAppearance = (value: unknown) => ['system', 'light', 'dark'].includes(value as string)
+
+/** A Quest's words, as typed: each part optional, a line or a list */
+const PART_CHECKS: Record<keyof QuestContent, (words: unknown) => boolean> = {
+  mainQuest: isText,
+  whyItMatters: isText,
+  successMetrics: isList,
+  whyItsExciting: isText,
+  obstacle: isText,
+  commitments: isList,
+}
+const optional = (check: (value: unknown) => boolean) => (value: unknown) => value === undefined || check(value)
+const isQuestDraft = (value: unknown) =>
+  isRecord(value, Object.fromEntries(Object.entries(PART_CHECKS).map(([part, check]) => [part, optional(check)])))
+/** Every part there, though perhaps not written yet */
+const isQuestContent = (value: unknown): value is QuestContent => isRecord(value, PART_CHECKS)
+
+function isVersions(value: unknown, quarter: Quarter) {
+  const isVersion = (version: unknown): version is Version =>
+    isRecord(version, {
+      savedOn: (date) => isLocalDate(date) && date <= lastDayOf(quarter),
+      content: (content) => isQuestContent(content) && isComplete(content),
+    })
+  // Oldest first, and at most one a Day
+  return (
+    Array.isArray(value) &&
+    value.every(isVersion) &&
+    value.every((version, i) => i === 0 || version.savedOn > value[i - 1]!.savedOn)
+  )
+}
+
+function isQuarterRecord(value: unknown, quarter: Quarter) {
+  const isReflection = (reflection: unknown) => isRecord(reflection, { text: isText, prompt: isText })
+  const isDay = (day: unknown) =>
+    isObject(day) && Object.keys(day).every(isQuest) && Object.values(day).every(isReflection)
+  const ofThisQuarter = (versions: unknown) => isVersions(versions, quarter)
+  return isRecord(value, {
+    versions: (versions) => isRecord(versions, { work: ofThisQuarter, life: ofThisQuarter }),
+    // Each Day's Reflections, on a Day of this Quarter
+    reflections: (reflections) =>
+      isObject(reflections) &&
+      Object.entries(reflections).every(([date, day]) => isLocalDate(date) && quarterOf(date) === quarter && isDay(day)),
+  })
+}
+
+const isPlace = (part: unknown) => part === 'readBack' || Object.hasOwn(PART_CHECKS, part as string)
+const isSetupDraft = (value: unknown) =>
+  isRecord(value, { at: (at) => isRecord(at, { quest: isQuest, part: isPlace }), work: isQuestDraft, life: isQuestDraft })
+
+const isEditDraft = (value: unknown) => isRecord(value, { startedAt: isTime, content: isQuestContent })
+
+/** A stored key and its value, as schema 1 has them */
+function isEntry(key: string, value: unknown, schemaVersion: number): boolean {
+  if (key === 'meta') {
+    return isRecord(value, {
+      schemaVersion: (version) => version === schemaVersion,
+      lastBackupAt: (at) => at === null || isTime(at),
+      appearance: isAppearance,
+    })
+  }
+  // quarter:2026-Q4, setup:2026-Q4 and edit:2026-Q4:work
+  const [name, quarter = '', quest, ...rest] = key.split(':')
+  const kind = `${name}:`
+  if (!isQuarter(quarter) || rest.length > 0) return false
+  if (kind === QUARTER_KEY && quest === undefined) return isQuarterRecord(value, quarter)
+  if (kind === SETUP_KEY && quest === undefined) return isSetupDraft(value)
+  if (kind === EDIT_KEY && isQuest(quest)) return isEditDraft(value)
+  return false
+}
+
+/** Parses a Backup file's text and checks all of it, or says why it can't be used */
+function checkBackup(text: string): Preview | Problem {
+  let file: unknown
+  try {
+    file = JSON.parse(text)
+  } catch {
+    return problem('not-a-backup')
+  }
+  if (!isObject(file) || file.app !== 'cadence') return problem('not-a-backup')
+  const { schemaVersion, exportedAt, data } = file
+  // A newer schema is refused before its data is read: this build can't know what valid means there
+  if (typeof schemaVersion === 'number' && schemaVersion > SCHEMA_VERSION) return problem('newer')
+  // Schema 1 is the first. From schema 2 on, an older backup's data is migrated here, before it's checked.
+  if (
+    schemaVersion !== SCHEMA_VERSION ||
+    !isTime(exportedAt) ||
+    !isObject(data) ||
+    !('meta' in data) ||
+    !Object.entries(data).every(([key, value]) => isEntry(key, value, schemaVersion))
+  ) {
+    return problem('damaged')
+  }
+  const keys = Object.keys(data).filter((key) => key !== 'meta')
+  const days = keys
+    .filter((key) => key.startsWith(QUARTER_KEY))
+    .flatMap((key) => Object.values((data[key] as QuarterRecord).reflections))
+  return {
+    exportedAt: exportedAt as number,
+    quarters: [...new Set(keys.map((key) => key.split(':')[1] as Quarter))].sort(),
+    reflections: days.reduce((count, day) => count + Object.keys(day).length, 0),
+    data,
+  }
+}
 
 /** A change to one key: the value to put, or undefined to delete it */
 type Change = [key: string, value: unknown]
@@ -179,9 +353,10 @@ function failedSave(error: unknown): StoreError {
     : new StoreError('failed', "Couldn't save. Close and reopen Cadence, or restart the iPhone.", { cause: error })
 }
 
-/** Every change lands, or none do: one IndexedDB transaction */
-function transact(kv: UseStore, changes: Change[]): Promise<void> {
+/** Every change lands, or none do: one IndexedDB transaction. `replace` clears every key first. */
+function transact(kv: UseStore, changes: Change[], replace: boolean): Promise<void> {
   return kv('readwrite', (store) => {
+    if (replace) store.clear()
     for (const [key, value] of changes) {
       if (value === undefined) store.delete(key)
       else store.put(value, key)
@@ -198,41 +373,44 @@ function withEntry<K extends string, V>(record: Partial<Record<K, V>>, key: K, v
   return next
 }
 
+/** What memory holds for the stored keys, meta among them */
+function snapshotOf(stored: Map<string, unknown>): Snapshot {
+  const snapshot: Snapshot = { quarters: {}, setupDrafts: {}, meta: stored.get('meta') as Meta, readOnly: false }
+  for (const [key, value] of stored) {
+    if (key.startsWith(QUARTER_KEY)) {
+      snapshot.quarters[key.slice(QUARTER_KEY.length) as Quarter] = value as QuarterRecord
+    } else if (key.startsWith(SETUP_KEY)) {
+      snapshot.setupDrafts[key.slice(SETUP_KEY.length) as Quarter] = value as SetupDraft
+    }
+  }
+  snapshot.readOnly = snapshot.meta.schemaVersion > SCHEMA_VERSION
+  return snapshot
+}
+
 /** Loads everything into memory, and writes `meta` on first run */
 export async function open(clock: () => Date, connect = () => createStore('cadence', 'kv')): Promise<Store> {
   let kv = connect()
-  let snapshot: Snapshot = {
-    quarters: {},
-    setupDrafts: {},
-    meta: { schemaVersion: SCHEMA_VERSION, lastBackupAt: null, appearance: 'system' },
-    readOnly: false,
-  }
   /** Writes the changes, retrying once on a fresh connection if iOS has dropped this one (spec §13.5) */
-  async function write(changes: Change[]) {
+  async function write(changes: Change[], replace = false) {
     try {
-      await transact(kv, changes)
+      await transact(kv, changes, replace)
     } catch (error) {
       if (!CONNECTION_LOST.includes(String(nameOf(error)))) throw failedSave(error)
       kv = connect()
-      await transact(kv, changes).catch((again: unknown) => {
+      await transact(kv, changes, replace).catch((again: unknown) => {
         throw failedSave(again)
       })
     }
   }
 
-  let hasMeta = false
-  for (const [key, value] of await entries(kv)) {
-    if (key === 'meta') {
-      snapshot.meta = value as Meta
-      hasMeta = true
-    } else if (typeof key === 'string' && key.startsWith(QUARTER_KEY)) {
-      snapshot.quarters[key.slice(QUARTER_KEY.length) as Quarter] = value as QuarterRecord
-    } else if (typeof key === 'string' && key.startsWith(SETUP_KEY)) {
-      snapshot.setupDrafts[key.slice(SETUP_KEY.length) as Quarter] = value as SetupDraft
-    }
+  /** Every key as stored, the ones this build doesn't read too, so a Backup holds everything */
+  const stored = new Map((await entries(kv)) as [string, unknown][])
+  if (!stored.has('meta')) {
+    const meta: Meta = { schemaVersion: SCHEMA_VERSION, lastBackupAt: null, appearance: 'system' }
+    await write([['meta', meta]])
+    stored.set('meta', meta)
   }
-  if (!hasMeta) await write([['meta', snapshot.meta]])
-  snapshot.readOnly = snapshot.meta.schemaVersion > SCHEMA_VERSION
+  let snapshot = snapshotOf(stored)
 
   const listeners = new Set<() => void>()
   const today = () => localDate(clock())
@@ -254,8 +432,13 @@ export async function open(clock: () => Date, connect = () => createStore('caden
   }
 
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
-  async function commit(changes: Change[], next: Snapshot) {
-    await write(changes)
+  async function commit(changes: Change[], next: Snapshot, replace = false) {
+    await write(changes, replace)
+    if (replace) stored.clear()
+    for (const [key, value] of changes) {
+      if (value === undefined) stored.delete(key)
+      else stored.set(key, value)
+    }
     snapshot = next
     for (const listener of listeners) listener()
   }
@@ -350,6 +533,28 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     await commit([['meta', meta]], { ...snapshot, meta })
   }
 
+  async function markBackedUp() {
+    const meta: Meta = { ...snapshot.meta, lastBackupAt: clock().getTime() }
+    await commit([['meta', meta]], { ...snapshot, meta })
+  }
+
+  /** From memory, so the tap that shares it still counts as a tap when the share sheet opens (spec §12.2) */
+  function exportBackup() {
+    const backup: BackupFile = {
+      app: 'cadence',
+      schemaVersion: snapshot.meta.schemaVersion,
+      exportedAt: clock().getTime(),
+      data: Object.fromEntries(stored),
+    }
+    return new File([JSON.stringify(backup, null, 2)], `cadence-backup-${today()}.json`, { type: 'application/json' })
+  }
+
+  async function replaceWith(backup: Preview) {
+    const data = new Map(Object.entries(backup.data))
+    data.set('meta', { ...(data.get('meta') as Meta), lastBackupAt: backup.exportedAt })
+    await commit([...data], snapshotOf(data), true)
+  }
+
   return {
     snapshot: () => snapshot,
     now: clock,
@@ -362,5 +567,9 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     switchSetupTarget: inTurn(switchSetupTarget),
     finishQuest: inTurn(finishQuest),
     setAppearance: inTurn(setAppearance),
+    exportBackup,
+    markBackedUp: inTurn(markBackedUp),
+    readBackup: async (file) => checkBackup(await file.text()),
+    replaceWith: inTurn(replaceWith),
   }
 }

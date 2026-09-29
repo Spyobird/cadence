@@ -94,6 +94,16 @@ function dateOf(day: number): LocalDate {
   return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())}`
 }
 
+/** A real calendar date, written like "2026-11-12" */
+export function isLocalDate(value: unknown): value is LocalDate {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && dateOf(dayNumber(...ymd(value))) === value
+}
+
+/** A Quarter's key, like "2026-Q4" */
+export function isQuarter(value: string): value is Quarter {
+  return /^\d{4}-Q[1-4]$/.test(value)
+}
+
 /** The Quarter's Day 1 */
 export function firstDayOf(quarter: Quarter): LocalDate {
   return dateOf(startOf(quarter))
