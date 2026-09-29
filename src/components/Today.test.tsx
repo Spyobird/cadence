@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
 import { aMomentLater, flakyPhone, pretendOpened } from '../test/phone'
@@ -246,5 +246,34 @@ describe('the menu', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: 'Menu' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Menu' })).toHaveFocus()
+  })
+})
+
+describe('a new day (spec §3)', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('comes in at midnight, with Today open', async () => {
+    vi.useFakeTimers({ now: new Date('2026-09-30T23:59:58'), toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    render(<App store={await open(() => new Date())} />)
+    expect(screen.getByText('Starts Thursday 1 Oct')).toBeInTheDocument()
+
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(screen.getByText('Starts Thursday 1 Oct')).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(1000))
+    expect(screen.getByText('Thursday 1 Oct')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Day 1 of 92' })).toBeInTheDocument()
+
+    // And again the midnight after
+    await act(() => vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000))
+    expect(screen.getByText('Friday 2 Oct')).toBeInTheDocument()
+  })
+
+  it('comes in when Cadence is shown again', async () => {
+    itIs('2026-11-12T22:00')
+    await launch()
+    itIs('2026-11-13T07:30')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    expect(screen.getByText('Friday 13 Nov')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Day 44 of 92' })).toBeInTheDocument()
   })
 })
