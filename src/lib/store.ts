@@ -3,7 +3,9 @@
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
 import { APPEARANCES, type Appearance } from './appearance'
+import { promptFor } from './prompts'
 import {
+  firstDayOf,
   isFinished,
   isLocalDate,
   isPast,
@@ -16,6 +18,7 @@ import {
   nextQuarter,
   type Quarter,
   quarterOf,
+  weekdayDate,
 } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
@@ -98,6 +101,10 @@ export interface Store {
   switchSetupTarget(from: Quarter, to: Quarter): Promise<void>
   /** Makes the Quest's Version 1 and clears its words from the setup Draft, in one transaction (spec §5.3) */
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
+  /** Keeps today's Reflection on a Quest, with a copy of the day's Prompt (spec §7.1) */
+  saveReflection(quarter: Quarter, quest: Quest, text: string): Promise<void>
+  /** Removes today's Reflection on a Quest */
+  removeReflection(quarter: Quarter, quest: Quest): Promise<void>
   /** Keeps the Appearance chosen in the menu (spec §2.8) */
   setAppearance(appearance: Appearance): Promise<void>
   /** The Backup: one file holding every stored key, Drafts included, named for today (spec §12.2) */
@@ -174,6 +181,9 @@ export function tidyQuest(content: QuestContent): QuestContent {
     commitments: tidyList(content.commitments),
   }
 }
+
+/** A Reflection as it's saved, and as it's compared: trimmed at the ends only, keeping its line breaks (spec §4.3) */
+export const tidyReflection = (text: string) => text.trim()
 
 /** Every required part written, and one to five items in each list; only the Obstacle may be empty */
 export function isComplete(content: QuestContent): boolean {
@@ -384,7 +394,11 @@ function transact(kv: UseStore, changes: Change[], replace: boolean): Promise<vo
 }
 
 /** A copy of `record` with `key` set to `value`, or left out when `value` is undefined */
-function withEntry<K extends string, V>(record: Partial<Record<K, V>>, key: K, value: V | undefined) {
+function withEntry<R extends Record<string, unknown>, K extends keyof R & string>(
+  record: R,
+  key: K,
+  value: R[K] | undefined,
+): R {
   const next = { ...record }
   if (value === undefined) delete next[key]
   else next[key] = value
@@ -544,6 +558,30 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     )
   }
 
+  /** A Reflection that's only spaces is empty, so saving it removes the Day's Reflection on that Quest */
+  async function saveReflection(quarter: Quarter, quest: Quest, typed: string) {
+    refuseIfEnded(quarter)
+    const date = today()
+    // Only for today's date, on a Day of a set-up Quarter (spec §7.1)
+    if (quarterOf(date) !== quarter) {
+      throw new StoreError('not-allowed', `Reflections start on Day 1, ${weekdayDate(firstDayOf(quarter))}.`)
+    }
+    const record = snapshot.quarters[quarter]
+    if (!record || !isSetUp(snapshot, quarter)) {
+      throw new StoreError('not-allowed', `Reflections start once ${labelOf(quarter)} is set up.`)
+    }
+    const text = tidyReflection(typed)
+    const day = withEntry(record.reflections[date] ?? {}, quest, text ? { text, prompt: promptFor(date) } : undefined)
+    // A Day is kept only while it has a Reflection
+    const reflections = withEntry(record.reflections, date, Object.keys(day).length > 0 ? day : undefined)
+    const reflected: QuarterRecord = { ...record, reflections }
+    await commit([[quarterKey(quarter), reflected]], {
+      ...snapshot,
+      quarters: withEntry(snapshot.quarters, quarter, reflected),
+    })
+  }
+  const removeReflection = (quarter: Quarter, quest: Quest) => saveReflection(quarter, quest, '')
+
   /** Changes some of meta, keeping the rest as it was */
   async function saveMeta(changes: Partial<Meta>) {
     const meta: Meta = { ...snapshot.meta, ...changes }
@@ -592,6 +630,8 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     saveSetupDraft: inTurn(saveSetupDraft),
     switchSetupTarget: inTurn(switchSetupTarget),
     finishQuest: inTurn(finishQuest),
+    saveReflection: inTurn(saveReflection),
+    removeReflection: inTurn(removeReflection),
     setAppearance: inTurn(setAppearance),
     exportBackup,
     markBackedUp: inTurn(markBackedUp),

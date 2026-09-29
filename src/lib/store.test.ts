@@ -104,6 +104,8 @@ describe('data from a newer Cadence', () => {
     })
     expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.saveReflection('2026-Q4', 'work', 'Pages next'))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.removeReflection('2026-Q4', 'work'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.setAppearance('light'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.markBackedUp())).toMatchObject({ reason: 'read-only' })
     const backup = { exportedAt: 1762941600000, quarters: [], reflectionCount: 0, data: { meta: { ...newer, schemaVersion: 1 } } }
@@ -352,6 +354,135 @@ describe('a Past Quarter', () => {
     const store = await open(clock)
     expect(await refusal(store.finishQuest('2026-Q3', 'work', quest))).toMatchObject({ reason: 'quarter-ended' })
     expect((await open(clock)).snapshot().quarters).toEqual({})
+  })
+})
+
+describe('Reflections', () => {
+  const THURSDAY = "What's getting in the way right now, and what will you do when it shows up?"
+
+  /** Q4 2026, set up on 29 Sep */
+  async function setUpQ4() {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
+    return store
+  }
+
+  it("keeps today's Reflection on a Quest with a copy of the day's Prompt, across a reopen", async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:00')
+    await store.saveReflection('2026-Q4', 'work', 'Pages next')
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.quarters['2026-Q4']?.reflections).toEqual({
+        '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+      })
+    }
+  })
+
+  it('keeps one per Quest per Day: Work and Life each have their own, and saving again replaces it', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:00')
+    await store.saveReflection('2026-Q4', 'work', 'Pages next')
+    await store.saveReflection('2026-Q4', 'life', 'Ran 4K')
+    itIs('2026-11-12T21:30')
+    await store.saveReflection('2026-Q4', 'work', 'Pages done, the fold next')
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.quarters['2026-Q4']?.reflections).toEqual({
+        '2026-11-12': {
+          work: { text: 'Pages done, the fold next', prompt: THURSDAY },
+          life: { text: 'Ran 4K', prompt: THURSDAY },
+        },
+      })
+    }
+  })
+
+  it('is trimmed at the ends only, keeping its line breaks (spec §4.3)', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:00')
+    await store.saveReflection('2026-Q4', 'work', '\n  Shipped the ring.\n\n  Felt good.  \n')
+    expect(store.snapshot().quarters['2026-Q4']?.reflections['2026-11-12']?.work?.text).toBe(
+      'Shipped the ring.\n\n  Felt good.',
+    )
+  })
+
+  it('is removed, leaving the Day only with a Reflection, when it is emptied or removed', async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T10:00')
+    await store.saveReflection('2026-Q4', 'work', 'Pages next')
+    await store.saveReflection('2026-Q4', 'life', 'Ran 4K')
+
+    await store.saveReflection('2026-Q4', 'work', ' \n ')
+    expect(store.snapshot().quarters['2026-Q4']?.reflections).toEqual({
+      '2026-11-12': { life: { text: 'Ran 4K', prompt: THURSDAY } },
+    })
+    await store.removeReflection('2026-Q4', 'life')
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.quarters['2026-Q4']?.reflections).toEqual({})
+    }
+  })
+
+  it("belongs to the Day it's saved on: at 00:01 it's the new Day's, with its Prompt, and yesterday's stays read-only", async () => {
+    const store = await setUpQ4()
+    itIs('2026-11-12T23:58')
+    await store.saveReflection('2026-Q4', 'work', 'Pages next')
+
+    itIs('2026-11-13T00:01')
+    await store.saveReflection('2026-Q4', 'work', 'Pages next, and the fold')
+    await store.removeReflection('2026-Q4', 'work')
+    await store.saveReflection('2026-Q4', 'life', 'Ran 4K')
+
+    expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
+      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+      '2026-11-13': {
+        life: { text: 'Ran 4K', prompt: 'Looking at the week so far, are your Commitments actually moving your Success Metrics?' },
+      },
+    })
+  })
+
+  it("is refused once its Quarter has ended at midnight, and nothing is saved", async () => {
+    const store = await setUpQ4()
+    itIs('2026-12-31T23:58')
+    await store.saveReflection('2026-Q4', 'work', 'The last Day')
+
+    itIs('2027-01-01T00:01')
+    for (const write of [
+      store.saveReflection('2026-Q4', 'work', 'The last Day, and a bit'),
+      store.removeReflection('2026-Q4', 'work'),
+    ]) {
+      expect(await refusal(write)).toMatchObject({
+        reason: 'quarter-ended',
+        message: "Q4 2026 ended at midnight, so this can't be saved.",
+      })
+    }
+    expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
+      '2026-12-31': { work: { text: 'The last Day', prompt: THURSDAY } },
+    })
+  })
+
+  it('is refused before Day 1 (spec §6.4)', async () => {
+    const store = await setUpQ4() // on 29 Sep, before Q4's Day 1
+    expect(await refusal(store.saveReflection('2026-Q4', 'work', 'Ready'))).toMatchObject({
+      reason: 'not-allowed',
+      message: 'Reflections start on Day 1, Thursday 1 Oct.',
+    })
+    itIs('2026-11-12T10:00') // nor for a Quarter further ahead
+    expect(await refusal(store.saveReflection('2027-Q1', 'work', 'Ready'))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot().quarters).toMatchObject({ '2026-Q4': { reflections: {} } })
+    expect((await open(clock)).snapshot().quarters).not.toHaveProperty('2027-Q1')
+  })
+
+  it('is refused in a Quarter that is not set up', async () => {
+    itIs('2026-10-01T09:00')
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    for (const quarter of ['2026-Q4', '2026-Q3'] as const) {
+      expect(await refusal(store.saveReflection(quarter, 'work', 'Pages next'))).toMatchObject({
+        reason: quarter === '2026-Q4' ? 'not-allowed' : 'quarter-ended',
+      })
+    }
+    expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({})
   })
 })
 
