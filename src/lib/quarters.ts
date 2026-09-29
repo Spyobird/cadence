@@ -39,7 +39,7 @@ function startOf(quarter: Quarter): number {
   return dayNumber(year, q * 3 - 2, 1)
 }
 
-function nextQuarter(quarter: Quarter): Quarter {
+export function nextQuarter(quarter: Quarter): Quarter {
   const [year, q] = quarter.split('-Q').map(Number) as [number, number]
   return q === 4 ? `${year + 1}-Q1` : `${year}-Q${(q + 1) as 2 | 3 | 4}`
 }

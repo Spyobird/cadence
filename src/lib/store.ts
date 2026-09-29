@@ -3,13 +3,14 @@
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
 import type { Appearance } from './appearance'
-import { labelOf, type LocalDate, localDate, type Quarter, quarterOf } from './quarters'
+import { labelOf, type LocalDate, localDate, nextQuarter, type Quarter, quarterOf } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
 const SCHEMA_VERSION = 1
 
 /** The two Quests, Work then Life, in that order everywhere */
-export type Quest = 'work' | 'life'
+export const QUESTS = ['work', 'life'] as const
+export type Quest = (typeof QUESTS)[number]
 
 export interface QuestContent {
   mainQuest: string
@@ -70,12 +71,14 @@ export interface Store {
   subscribe(listener: () => void): () => void
   /** Keeps setup's words as typed, and where it was left (spec §5.4) */
   saveSetupDraft(quarter: Quarter, draft: SetupDraft): Promise<void>
+  /** Moves setup, and its words, to the other of the Current and Upcoming Quarters, until Work is finished (spec §3.2) */
+  switchSetupTarget(from: Quarter, to: Quarter): Promise<void>
   /** Makes the Quest's Version 1 and clears its words from the setup Draft, in one transaction (spec §5.3) */
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
 }
 
 /** Why the store refused a write */
-export type Refusal = 'incomplete' | 'quarter-ended'
+export type Refusal = 'incomplete' | 'quarter-ended' | 'not-allowed'
 
 /** A write that didn't happen. Nothing was saved, and `message` says why in words the UI can show. */
 export class StoreError extends Error {
@@ -168,6 +171,17 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     }
   }
 
+  /** Setup writes only to the Current or the Upcoming Quarter (spec §3.2) */
+  function refuseUnlessSetupTarget(quarter: Quarter) {
+    refuseIfEnded(quarter)
+    if (quarter > nextQuarter(quarterOf(today()))) {
+      throw new StoreError('not-allowed', `${labelOf(quarter)} can't be set up yet.`)
+    }
+  }
+
+  /** A Quest is finished once it has a Version */
+  const isFinished = (quarter: Quarter, quest: Quest) => (snapshot.quarters[quarter]?.versions[quest].length ?? 0) > 0
+
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
   async function commit(changes: Change[], next: Snapshot) {
     await transact(kv, changes)
@@ -182,14 +196,43 @@ export async function open(clock: () => Date, connect = () => createStore('caden
       return () => listeners.delete(listener)
     },
     async saveSetupDraft(quarter, draft) {
-      refuseIfEnded(quarter)
+      refuseUnlessSetupTarget(quarter)
+      for (const quest of QUESTS) {
+        // A finished Quest never turns back into a Draft (spec §10)
+        if (isFinished(quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
+          throw new StoreError('not-allowed', `The ${quest} Quest is finished, so the setup Draft can't hold it.`)
+        }
+      }
       await commit([[`setup:${quarter}`, draft]], {
         ...snapshot,
         setupDrafts: withEntry(snapshot.setupDrafts, quarter, draft),
       })
     },
+    async switchSetupTarget(from, to) {
+      refuseUnlessSetupTarget(from)
+      refuseUnlessSetupTarget(to)
+      if (from === to || snapshot.setupDrafts[to] || snapshot.quarters[to]) {
+        throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
+      }
+      if (isFinished(from, 'work')) {
+        throw new StoreError('not-allowed', `The Work Quest is finished, so setup stays on ${labelOf(from)}.`)
+      }
+      // With nothing typed yet, a blank Draft still keeps the new target
+      const draft = snapshot.setupDrafts[from] ?? { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
+      await commit(
+        [
+          [`setup:${from}`, undefined],
+          [`setup:${to}`, draft],
+        ],
+        { ...snapshot, setupDrafts: withEntry(withEntry(snapshot.setupDrafts, from, undefined), to, draft) },
+      )
+    },
     async finishQuest(quarter, quest, typed) {
-      refuseIfEnded(quarter)
+      refuseUnlessSetupTarget(quarter)
+      if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${quest} Quest is already finished.`)
+      if (quest === 'life' && !isFinished(quarter, 'work')) {
+        throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
+      }
       const content = tidyQuest(typed)
       if (!isComplete(content)) {
         throw new StoreError('incomplete', 'Only a complete Quest can be finished: every part but the Obstacle written, and one to five items in each list.')

@@ -64,6 +64,69 @@ describe('saveSetupDraft', () => {
     const reopened = await open(clock)
     expect(reopened.snapshot().setupDrafts['2026-Q4']).toEqual(draft)
   })
+
+  it('keeps a finished Quest out of the Draft', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    const backOnWork: SetupDraft = { at: { quest: 'work', part: 'readBack' }, work: {}, life: {} }
+    const withWorkWords: SetupDraft = { at: { quest: 'life', part: 'mainQuest' }, work: { mainQuest: 'ship' }, life: {} }
+
+    for (const stale of [backOnWork, withWorkWords]) {
+      expect(await refusal(store.saveSetupDraft('2026-Q4', stale))).toMatchObject({ reason: 'not-allowed' })
+    }
+    expect((await open(clock)).snapshot().setupDrafts['2026-Q4']).toEqual({
+      at: { quest: 'life', part: 'mainQuest' },
+      work: {},
+      life: {},
+    })
+  })
+
+  it('sets up only the Current or the Upcoming Quarter', async () => {
+    const store = await open(clock) // 29 Sep: Q3 is the Current Quarter, and Q4 the Upcoming one
+    expect(await refusal(store.saveSetupDraft('2027-Q1', draft))).toMatchObject({ reason: 'not-allowed' })
+    expect(await refusal(store.finishQuest('2027-Q1', 'work', quest))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot()).toMatchObject({ quarters: {}, setupDrafts: {} })
+  })
+})
+
+describe('switchSetupTarget', () => {
+  const draft: SetupDraft = { at: { quest: 'work', part: 'whyItMatters' }, work: { mainQuest: 'ship' }, life: {} }
+
+  it("moves the Draft's words to the other Quarter", async () => {
+    const store = await open(clock)
+    await store.saveSetupDraft('2026-Q4', draft)
+    await store.switchSetupTarget('2026-Q4', '2026-Q3')
+
+    for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
+      expect(snapshot.setupDrafts).toEqual({ '2026-Q3': draft })
+    }
+  })
+
+  it('keeps the new target when nothing has been typed yet', async () => {
+    const store = await open(clock)
+    await store.switchSetupTarget('2026-Q4', '2026-Q3')
+    expect(screenFor((await open(clock)).snapshot(), '2026-09-29')).toEqual({ name: 'resume', quarter: '2026-Q3' })
+  })
+
+  it('is refused once the Work Quest is finished', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'not-allowed' })
+    const snapshot = (await open(clock)).snapshot()
+    expect(Object.keys(snapshot.setupDrafts)).toEqual(['2026-Q4'])
+    expect(Object.keys(snapshot.quarters)).toEqual(['2026-Q4'])
+  })
+
+  it('switches only between the Current and the Upcoming Quarter', async () => {
+    const store = await open(clock)
+    await store.saveSetupDraft('2026-Q4', draft)
+    expect(await refusal(store.switchSetupTarget('2026-Q4', '2027-Q1'))).toMatchObject({ reason: 'not-allowed' })
+    expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q4'))).toMatchObject({ reason: 'not-allowed' })
+
+    itIs('2026-10-01T09:00') // Q4's Draft can't move back into Q3 once Q3 has ended
+    expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'quarter-ended' })
+    expect((await open(clock)).snapshot().setupDrafts).toEqual({ '2026-Q4': draft })
+  })
 })
 
 describe('finishQuest', () => {
@@ -129,6 +192,22 @@ describe('finishQuest', () => {
       expect(snapshot.quarters).toEqual({})
       expect(snapshot.setupDrafts['2026-Q4']).toEqual(draft)
     }
+  })
+
+  it('finishes Work before Life', async () => {
+    const store = await open(clock)
+    expect(await refusal(store.finishQuest('2026-Q4', 'life', quest))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot().quarters).toEqual({})
+  })
+
+  it('finishes a Quest only once', async () => {
+    const store = await open(clock)
+    await store.finishQuest('2026-Q4', 'work', quest)
+    const again = { ...quest, mainQuest: 'ship Cadence v2' }
+    expect(await refusal(store.finishQuest('2026-Q4', 'work', again))).toMatchObject({ reason: 'not-allowed' })
+    expect((await open(clock)).snapshot().quarters['2026-Q4']?.versions.work).toEqual([
+      { savedOn: '2026-09-29', content: quest },
+    ])
   })
 
   it('sets the Quarter up once Life is finished, and deletes the Draft', async () => {
