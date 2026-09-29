@@ -2,62 +2,56 @@
 // (spec §5.1)
 
 import { type ReactNode, useId, useState } from 'react'
-import { keepFocus } from '../lib/keyboard'
+import { keepsFocus } from '../lib/keyboard'
 import type { Quarter } from '../lib/quarters'
-import { isList, type Part, SCAFFOLD, STUCK_QUESTIONS, withEnd } from '../lib/scaffold'
-import type { Quest, QuestContent } from '../lib/store'
-import { primary, secondary, plain } from './buttons'
+import { isList, isPartWritten, type Part, SCAFFOLD, STUCK_QUESTIONS, withEnd } from '../lib/scaffold'
+import type { Quest, QuestDraft } from '../lib/store'
+import { plain, primary, secondary } from './buttons'
 import { ListField, PartLine } from './Fields'
-
-/** The words written so far, part by part */
-export type Words = Partial<QuestContent>
-
-/** Written: a part with more than spaces, or a list with at least one such item */
-export function isPartWritten(words: Words, part: Part): boolean {
-  const value = words[part] ?? ''
-  return [value].flat().some((text) => text.trim() !== '')
-}
 
 interface Props {
   quest: Quest
   quarter: Quarter
   part: Part
-  words: Words
-  onWords: (words: Words) => void
+  /** The Quest's words so far */
+  draft: QuestDraft
+  onChange: (draft: QuestDraft) => void
   /** Next, Done or Skip for now: moves on, with these words */
-  onNext: (words: Words) => void
+  onNext: (draft: QuestDraft) => void
   /** Without it, Back is disabled */
   onBack?: () => void
   /** Done, when the part was opened from the read-back */
   nextLabel: 'Next' | 'Done'
+  /** Reached by a tap, so it slides in; motion only ever answers a tap */
+  slideIn: boolean
 }
 
-export function PartScreen({ quest, quarter, part, words, onWords, onNext, onBack, nextLabel }: Props) {
+export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn }: Props) {
   const openingId = useId()
   const { opening, placeholder, hint, item } = SCAFFOLD[part]
-  const written = isPartWritten(words, part)
+  const written = isPartWritten(draft, part)
   // Skipping the Obstacle is a deliberate tap, in Next's place while it's empty (spec §4.1)
   const skip = part === 'obstacle' && !written
 
   return (
     <>
-      <div className="step-in pt-6">
+      <div className={`pt-6 ${slideIn ? 'step-in' : ''}`}>
         <p id={openingId} className="mb-2.5 text-l text-given">
           {opening(quest, quarter)}
         </p>
         {isList(part) ? (
           <ListField
-            items={words[part] ?? []}
-            onChange={(items) => onWords({ ...words, [part]: items })}
-            onLeave={(items) => onNext({ ...words, [part]: items })}
+            items={draft[part] ?? []}
+            onChange={(items) => onChange({ ...draft, [part]: items })}
+            onLeave={(items) => onNext({ ...draft, [part]: items })}
             itemName={item!}
             placeholder={placeholder}
           />
         ) : (
           <PartLine
-            value={words[part] ?? ''}
-            onChange={(value) => onWords({ ...words, [part]: value })}
-            onEnter={() => written && onNext(words)}
+            value={draft[part] ?? ''}
+            onChange={(value) => onChange({ ...draft, [part]: value })}
+            onEnter={() => written && onNext(draft)}
             placeholder={placeholder}
             labelledBy={openingId}
           />
@@ -70,15 +64,15 @@ export function PartScreen({ quest, quarter, part, words, onWords, onNext, onBac
         {part === 'mainQuest' && <Stuck quest={quest} quarter={quarter} />}
       </div>
       <Bar>
-        <button type="button" className={plain} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={onBack} disabled={!onBack}>
+        <button type="button" className={plain} {...keepsFocus} onClick={onBack} disabled={!onBack}>
           Back
         </button>
         {skip ? (
-          <button type="button" className={secondary} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onNext({ ...words, obstacle: '' })}>
+          <button type="button" className={secondary} {...keepsFocus} onClick={() => onNext({ ...draft, obstacle: '' })}>
             Skip for now
           </button>
         ) : (
-          <button type="button" className={primary} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => onNext(words)} disabled={!written}>
+          <button type="button" className={primary} {...keepsFocus} onClick={() => onNext(draft)} disabled={!written}>
             {nextLabel}
           </button>
         )}
@@ -96,8 +90,7 @@ function Stuck({ quest, quarter }: { quest: Quest; quarter: Quarter }) {
         type="button"
         aria-expanded={open}
         className="min-h-11 text-left text-m text-given underline decoration-line underline-offset-4"
-        onPointerDown={keepFocus}
-        onMouseDown={keepFocus}
+        {...keepsFocus}
         onClick={() => setOpen(!open)}
       >
         {open ? 'Hide the questions' : 'Stuck? Four questions to help find it'}
@@ -105,7 +98,7 @@ function Stuck({ quest, quarter }: { quest: Quest; quarter: Quarter }) {
       {open && (
         <ul className="mt-1 border-l-2 border-line">
           {STUCK_QUESTIONS[quest].map((question) => (
-            <li key={question} className="py-1.5 pl-3.5 font-serif text-m text-given italic">
+            <li key={question} className="py-1.5 pl-3.5 text-m text-given italic">
               {withEnd(question, quarter)}
             </li>
           ))}

@@ -1,7 +1,7 @@
 // The Scaffold: the six parts of a Quest, in order, with the openings a Quest is written by completing (spec §4).
 
 import { endOf, type Quarter } from './quarters'
-import { NAMES, type Quest, type QuestContent } from './store'
+import { NAMES, type Quest, type QuestContent, type QuestDraft } from './store'
 
 export type Part = keyof QuestContent
 
@@ -61,6 +61,12 @@ export const SCAFFOLD: Record<Part, PartWords> = {
 
 /** The parts in order */
 export const PARTS = Object.keys(SCAFFOLD) as Part[]
+
+/** More than spaces */
+export const isWritten = (text: string) => text.trim() !== ''
+
+/** A one-line part with more than spaces, or a list with at least one such item */
+export const isPartWritten = (draft: QuestDraft, part: Part) => [draft[part] ?? ''].flat().some(isWritten)
 
 /** The two lists, as opposed to the one-line parts */
 export type ListPart = 'successMetrics' | 'commitments'

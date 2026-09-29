@@ -7,7 +7,7 @@ import { createStore, set } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
 import { open, type QuestContent } from './lib/store'
-import { pretendOpened } from './test/phone'
+import { aMomentLater, pretendOpened } from './test/phone'
 
 const clock = () => new Date('2026-09-29T10:00')
 
@@ -111,7 +111,7 @@ describe('data from a newer Cadence', () => {
     expect(screen.getByText('This data is from a newer Cadence. Update Cadence to make changes.')).toBeInTheDocument()
 
     await userEvent.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await aMomentLater()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 

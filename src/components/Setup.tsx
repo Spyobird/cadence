@@ -2,26 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
-import { dropKeyboard, holdKeyboard, keepFocus, useKeyboardInset } from '../lib/keyboard'
-import { isFinished, labelOf, nextQuarter, type Quarter, quarterOf, spanOf } from '../lib/quarters'
-import { PARTS, type Part } from '../lib/scaffold'
+import { dropKeyboard, holdKeyboard, keepsFocus, useKeyboardInset } from '../lib/keyboard'
+import { isFinished, labelOf, type Quarter, spanOf } from '../lib/quarters'
+import { isPartWritten, PARTS, type Part } from '../lib/scaffold'
 import {
+  BLANK_SETUP_DRAFT,
   isComplete,
   NAMES,
   QUESTS,
   type Quest,
   type QuestContent,
+  type QuestDraft,
   type SetupDraft,
   StoreError,
+  switchTargetFrom,
   tidyQuest,
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { plain, primary } from './buttons'
-import { Bar, isPartWritten, PartScreen, type Words } from './PartScreen'
-import { Problem } from './Problem'
+import { FailedSave } from './FailedSave'
+import { Bar, PartScreen } from './PartScreen'
 import { ReadBack } from './ReadBack'
-
-const BLANK: SetupDraft = { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
 
 const EMPTY: QuestContent = {
   mainQuest: '',
@@ -31,8 +32,6 @@ const EMPTY: QuestContent = {
   obstacle: '',
   commitments: [],
 }
-
-const hasWords = (words: Words) => Object.values(words).flat().some((text) => text.trim() !== '')
 
 interface Props {
   /** The Quarter setup opened on. Setup keeps its own target from then on, since the owner can switch it. */
@@ -45,10 +44,11 @@ export function Setup({ quarter: opened, onToday }: Props) {
   const { snapshot, today, saveSetupDraft, switchSetupTarget, finishQuest } = useCadence()
   const [quarter, setQuarter] = useState(opened)
   // The words on screen, which every change saves as typed (spec §5.4)
-  const [draft, setDraft] = useState(() => snapshot.setupDrafts[opened] ?? BLANK)
+  const [draft, setDraft] = useState(() => snapshot.setupDrafts[opened] ?? BLANK_SETUP_DRAFT)
   const [pickedUp, setPickedUp] = useState(() => {
     const stored = snapshot.setupDrafts[opened]
-    return !!stored && (QUESTS.some((quest) => hasWords(stored[quest])) || isFinished(snapshot, opened, 'work'))
+    const written = (questDraft: QuestDraft) => PARTS.some((part) => isPartWritten(questDraft, part))
+    return !!stored && (QUESTS.some((quest) => written(stored[quest])) || isFinished(snapshot, opened, 'work'))
   })
   /**
    * The part on screen was opened from the read-back, so Done returns there. On resuming a part, written
@@ -58,9 +58,15 @@ export function Setup({ quarter: opened, onToday }: Props) {
     const stored = snapshot.setupDrafts[opened]
     return !!stored && stored.at.part !== 'readBack' && isPartWritten(stored[stored.at.quest], 'commitments')
   })
+  /** Setup has moved since it opened, so a new step slides in: motion only ever answers a tap */
+  const [moved, setMoved] = useState(false)
   const [finishing, setFinishing] = useState(false)
   const [setUp, setSetUp] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
+
+  // Finishing Work moves the stored Draft on to Life's first part, by the store's rule, and setup follows it there
+  const stored = snapshot.setupDrafts[quarter]
+  if (stored && stored.at.quest !== draft.at.quest) setDraft(stored)
 
   useKeyboardInset()
   // An update never reloads mid-setup (spec §2.3)
@@ -69,73 +75,73 @@ export function Setup({ quarter: opened, onToday }: Props) {
     return () => setWriting(false)
   }, [setUp])
 
-  function showProblem(error: unknown) {
+  function showFailure(error: unknown) {
     if (!(error instanceof StoreError)) throw error
     // The newer-data banner already says why nothing saves
-    if (error.reason !== 'read-only') setProblem(error.message)
+    if (error.reason !== 'read-only') setFailure(error.message)
   }
 
   const { quest, part } = draft.at
-  const words = draft[quest]
+  const questDraft = draft[quest]
+  /** The part on screen, counting the read-back as the seventh */
+  const index = part === 'readBack' ? PARTS.length : PARTS.indexOf(part)
 
   function save(next: SetupDraft) {
     setDraft(next)
     setPickedUp(false)
-    saveSetupDraft(quarter, next).catch(showProblem)
+    saveSetupDraft(quarter, next).catch(showFailure)
   }
 
-  const go = (to: Part | 'readBack', next: Words = words) => save({ ...draft, at: { quest, part: to }, [quest]: next })
+  function moveTo(to: Part | 'readBack', next: QuestDraft = questDraft) {
+    setMoved(true)
+    save({ ...draft, at: { quest, part: to }, [quest]: next })
+  }
 
   function toPart(to: Part, fromTheReadBack = false) {
     holdKeyboard()
     setFromReadBack(fromTheReadBack)
-    go(to)
+    moveTo(to)
   }
 
-  function toReadBack(next: Words) {
+  function toReadBack(next: QuestDraft) {
     dropKeyboard()
     setFromReadBack(false)
-    go('readBack', next)
+    moveTo('readBack', next)
   }
 
-  function forward(next: Words) {
-    const index = PARTS.indexOf(part as Part)
+  function forward(next: QuestDraft) {
     if (fromReadBack || index === PARTS.length - 1) return toReadBack(next)
     holdKeyboard()
-    go(PARTS[index + 1]!, next)
+    moveTo(PARTS[index + 1]!, next)
   }
 
-  // The switch reaches the other of the Current and Upcoming Quarters, until Work is finished (spec §3.2)
-  const current = quarterOf(today)
-  const other = quarter === current ? nextQuarter(current) : current
-  const canSwitch =
-    !finishing && !isFinished(snapshot, quarter, 'work') && !snapshot.setupDrafts[other] && !snapshot.quarters[other]
+  const switchTo = finishing ? undefined : switchTargetFrom(snapshot, today, quarter)
 
-  function switchTarget() {
+  function switchTarget(to: Quarter) {
     const from = quarter
-    setQuarter(other)
+    setQuarter(to)
     setPickedUp(false)
-    switchSetupTarget(from, other).catch((error: unknown) => {
+    switchSetupTarget(from, to).catch((error: unknown) => {
       setQuarter(from)
-      showProblem(error)
+      showFailure(error)
     })
   }
 
-  const content: QuestContent = { ...EMPTY, ...words }
+  const content: QuestContent = { ...EMPTY, ...questDraft }
   const canFinish = isComplete(tidyQuest(content)) && !finishing
 
   async function finish() {
     setFinishing(true)
+    setMoved(true)
     // Finishing Work moves on to Life's first part, which takes the keyboard
     if (quest === 'work') holdKeyboard()
     try {
       await finishQuest(quarter, quest, content)
       setPickedUp(false)
-      if (quest === 'work') setDraft({ at: { quest: 'life', part: 'mainQuest' }, work: {}, life: draft.life })
-      else setSetUp(true)
+      if (quest === 'life') setSetUp(true)
     } catch (error) {
       dropKeyboard()
-      showProblem(error)
+      showFailure(error)
     } finally {
       setFinishing(false)
     }
@@ -152,14 +158,13 @@ export function Setup({ quarter: opened, onToday }: Props) {
     )
   }
 
-  const index = part === 'readBack' ? PARTS.length : PARTS.indexOf(part)
   return (
     <main className="mx-auto max-w-[600px] px-gutter pt-safe pb-[calc(96px+var(--kb,0px))]">
       <div className="flex items-center justify-between gap-3 border-b border-line">
         <span className="py-3 text-s font-semibold tabular-nums">{`${labelOf(quarter)} · ${spanOf(quarter)}`}</span>
-        {canSwitch && (
-          <button type="button" className="min-h-11 text-s text-given" onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={switchTarget}>
-            Switch to {labelOf(other)}
+        {switchTo && (
+          <button type="button" className="min-h-11 text-m text-given" {...keepsFocus} onClick={() => switchTarget(switchTo)}>
+            Switch to {labelOf(switchTo)}
           </button>
         )}
       </div>
@@ -175,7 +180,7 @@ export function Setup({ quarter: opened, onToday }: Props) {
 
       {part === 'readBack' ? (
         <>
-          <h1 className="step-in mt-6 text-l font-semibold">Your {NAMES[quest]} Quest</h1>
+          <h1 className={`mt-6 text-l font-semibold ${moved ? 'step-in' : ''}`}>Your {NAMES[quest]} Quest</h1>
           <p className="mt-2 text-s text-faint">Read it through. Tap a part to change it.</p>
           <ReadBack quest={quest} quarter={quarter} content={content} onPart={(to) => toPart(to, true)} disabled={finishing} />
           <Bar>
@@ -194,16 +199,17 @@ export function Setup({ quarter: opened, onToday }: Props) {
           quest={quest}
           quarter={quarter}
           part={part}
-          words={words}
-          onWords={(next) => save({ ...draft, [quest]: next })}
+          draft={questDraft}
+          onChange={(next) => save({ ...draft, [quest]: next })}
           onNext={forward}
           // Life can't go back into Work: it's finished
           onBack={index > 0 ? () => toPart(PARTS[index - 1]!) : undefined}
           nextLabel={fromReadBack ? 'Done' : 'Next'}
+          slideIn={moved}
         />
       )}
 
-      {problem && <Problem message={problem} onClose={() => setProblem(null)} />}
+      {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}
     </main>
   )
 }

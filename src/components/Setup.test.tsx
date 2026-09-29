@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
 import { open } from '../lib/store'
 import { isWriting } from '../lib/writing'
-import { flakyPhone, pretendOpened } from '../test/phone'
+import { aMomentLater, flakyPhone, pretendOpened } from '../test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-09-29T10:00" */
@@ -22,7 +22,7 @@ async function launch(connect?: Parameters<typeof open>[1]) {
 
 /** Kills Cadence a moment after the last keystroke, once its saves have landed, and opens it again */
 async function reopen() {
-  await new Promise((resolve) => setTimeout(resolve, 50))
+  await aMomentLater()
   cleanup()
   return launch()
 }

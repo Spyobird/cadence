@@ -1,12 +1,9 @@
 // The owner's words on a writing screen: one line of prose, or a list of one-line items (spec §4.1, §5.2)
 
 import { type KeyboardEvent, type Ref, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { holdKeyboard, keepFocus, takeKeyboard } from '../lib/keyboard'
-import { MAX_ITEMS } from '../lib/store'
-
-/** A pasted or dictated line break becomes a space: every part is one line (spec §4.1) */
-const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ')
-const isWritten = (text: string) => text.trim() !== ''
+import { holdKeyboard, keepsFocus, takeKeyboard } from '../lib/keyboard'
+import { isWritten } from '../lib/scaffold'
+import { joinLines, MAX_ITEMS } from '../lib/store'
 
 interface LineProps {
   value: string
@@ -82,7 +79,8 @@ interface PartProps {
 export function PartLine({ onChange, ...props }: PartProps) {
   const field = useRef<HTMLTextAreaElement>(null)
   useEffect(() => takeKeyboard(field.current), [])
-  return <LineField {...props} fieldRef={field} capitalise={false} onChange={(value) => onChange(oneLine(value))} />
+  // Every part is one line, so a pasted line break becomes a space (spec §4.1)
+  return <LineField {...props} fieldRef={field} capitalise={false} onChange={(value) => onChange(joinLines(value))} />
 }
 
 interface ListProps {
@@ -97,7 +95,7 @@ interface ListProps {
 
 const without = (items: string[], index: number) => items.filter((_, i) => i !== index)
 
-const tool = 'min-h-11 rounded-full bg-raise px-3 text-s text-given disabled:text-faint'
+const toolButton = 'min-h-11 rounded-full bg-raise px-3 text-m text-given disabled:text-faint'
 
 /** Success Metrics or Commitments: one to five one-line items, in the owner's order (spec §5.2) */
 export function ListField({ items: stored, onChange, onLeave, itemName, placeholder }: ListProps) {
@@ -155,7 +153,7 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
       <ol>
         {items.map((item, index) => (
           // Items are known by their place: moving one moves the keyboard with it
-          <li key={index} className={`grid grid-cols-[30px_1fr] border-b ${focused === index ? 'border-gold-dim' : 'border-line'}`}>
+          <li key={index} className={`grid grid-cols-[30px_1fr] border-b ${focused === index ? 'border-given' : 'border-line'}`}>
             <span aria-hidden className="py-1 font-serif text-l text-faint tabular-nums">
               {index + 1}.
             </span>
@@ -175,13 +173,13 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
             />
             {focused === index && (
               <span className="col-start-2 flex gap-1.5 pb-2.5">
-                <button type="button" className={tool} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => move(index, index - 1)} disabled={index === 0}>
+                <button type="button" className={toolButton} {...keepsFocus} onClick={() => move(index, index - 1)} disabled={index === 0}>
                   Move up
                 </button>
-                <button type="button" className={tool} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => move(index, index + 1)} disabled={index === items.length - 1}>
+                <button type="button" className={toolButton} {...keepsFocus} onClick={() => move(index, index + 1)} disabled={index === items.length - 1}>
                   Move down
                 </button>
-                <button type="button" className={tool} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => remove(index)}>
+                <button type="button" className={toolButton} {...keepsFocus} onClick={() => remove(index)}>
                   Remove
                 </button>
               </span>
@@ -196,8 +194,7 @@ export function ListField({ items: stored, onChange, onLeave, itemName, placehol
           <button
             type="button"
             className="ml-[30px] min-h-11 text-m text-given"
-            onPointerDown={keepFocus}
-            onMouseDown={keepFocus}
+            {...keepsFocus}
             onClick={() => update([...items, ''], items.length)}
           >
             Add another

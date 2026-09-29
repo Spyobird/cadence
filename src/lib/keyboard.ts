@@ -43,8 +43,11 @@ export function takeKeyboard(field: HTMLTextAreaElement | null): void {
   field.scrollIntoView?.({ block: 'center' })
 }
 
-/** For a button's pointer and mouse down: a tap doesn't take focus from the field, so the keyboard stays up */
-export const keepFocus = (event: SyntheticEvent) => event.preventDefault()
+/** Spread on a button: tapping it doesn't take focus from the field, so the keyboard stays up */
+export const keepsFocus = {
+  onPointerDown: (event: SyntheticEvent) => event.preventDefault(),
+  onMouseDown: (event: SyntheticEvent) => event.preventDefault(),
+}
 
 /** Keeps `--kb` on <html> at the keyboard's height, so the bar can ride above it (visualViewport) */
 export function useKeyboardInset(): void {

@@ -32,3 +32,6 @@ export function flakyPhone() {
   }
   return { connect, failNextWrites: (...names: string[]) => failures.push(...names) }
 }
+
+/** A moment after the last keystroke or tap: long enough for queued saves to land */
+export const aMomentLater = () => new Promise((resolve) => setTimeout(resolve, 50))

@@ -44,11 +44,14 @@ export interface QuarterRecord {
   reflections: Record<LocalDate, Partial<Record<Quest, Reflection>>>
 }
 
+/** One Quest's words in a Draft, as typed: any part may be missing */
+export type QuestDraft = Partial<QuestContent>
+
 /** `setup:2026-Q4`: the words written so far, and where setup was left */
 export interface SetupDraft {
   at: { quest: Quest; part: keyof QuestContent | 'readBack' }
-  work: Partial<QuestContent>
-  life: Partial<QuestContent>
+  work: QuestDraft
+  life: QuestDraft
 }
 
 export interface Meta {
@@ -112,7 +115,9 @@ export class StoreError extends Error {
 export const MAX_ITEMS = 5
 
 /** One line of prose: trimmed, with a pasted line break made a space (spec §4.3) */
-const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ').trim()
+/** A pasted or dictated line break becomes a space, as typed */
+export const joinLines = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ')
+const oneLine = (text: string) => joinLines(text).trim()
 const tidyList = (items: string[]) => items.map(oneLine).filter(Boolean)
 
 /** A Quest as it's saved, and as it's compared: every part and list item on one tidy line, and no empty list items */
@@ -132,6 +137,21 @@ export function isComplete(content: QuestContent): boolean {
   const { mainQuest, whyItMatters, whyItsExciting, successMetrics, commitments } = content
   const listOk = (items: string[]) => items.length >= 1 && items.length <= MAX_ITEMS
   return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
+}
+
+/** A setup Draft before anything is typed: the Work Quest's Main Quest */
+export const BLANK_SETUP_DRAFT: SetupDraft = { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
+
+/**
+ * The Quarter setup can switch to from `from`: the other of the Current and Upcoming Quarters, while nothing is
+ * stored for it, and only until the Work Quest is finished (spec §3.2). Undefined when setup can't switch.
+ */
+export function switchTargetFrom(snapshot: Snapshot, today: LocalDate, from: Quarter): Quarter | undefined {
+  const current = quarterOf(today)
+  const upcoming = nextQuarter(current)
+  const to = from === current ? upcoming : from === upcoming ? current : undefined
+  if (!to || isFinished(snapshot, from, 'work') || snapshot.setupDrafts[to] || snapshot.quarters[to]) return undefined
+  return to
 }
 
 /** The storage keys (spec §13.2, ADR 0004) */
@@ -269,14 +289,14 @@ export async function open(clock: () => Date, connect = () => createStore('caden
   async function switchSetupTarget(from: Quarter, to: Quarter) {
     refuseUnlessSetupTarget(from)
     refuseUnlessSetupTarget(to)
-    if (from === to || snapshot.setupDrafts[to] || snapshot.quarters[to]) {
-      throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
-    }
     if (isFinished(snapshot, from, 'work')) {
       throw new StoreError('not-allowed', `The Work Quest is finished, so setup stays on ${labelOf(from)}.`)
     }
+    if (to !== switchTargetFrom(snapshot, today(), from)) {
+      throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
+    }
     // With nothing typed yet, a blank Draft still keeps the new target
-    const draft = snapshot.setupDrafts[from] ?? { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
+    const draft = snapshot.setupDrafts[from] ?? BLANK_SETUP_DRAFT
     await commit(
       [
         [setupKey(from), undefined],
