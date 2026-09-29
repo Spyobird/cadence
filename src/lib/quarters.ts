@@ -95,7 +95,6 @@ export function screenFor(snapshot: Snapshot, today: LocalDate): Screen {
     .filter((quarter) => quarter < current && setUp(quarter))
     .sort()
     .at(-1)
-  // The button aims where a blank setup would (§3.2): the Current Quarter, unless it's in its last 14 days
-  if (latest) return { name: 'ended', quarter: latest, next: setupTarget(today) }
+  if (latest) return { name: 'ended', quarter: latest, next: current }
   return { name: 'setup', quarter: setupTarget(today) }
 }

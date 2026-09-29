@@ -79,6 +79,8 @@ describe('data from a newer Cadence', () => {
     })
     expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    itIs('2026-10-01T09:00') // read-only comes first, before any other rule
+    expect(await refusal(store.saveSetupDraft('2026-Q3', draft))).toMatchObject({ reason: 'read-only' })
     expect((await open(clock)).snapshot()).toMatchObject({ quarters: {}, setupDrafts: {} })
     expect(await stored('meta')).toEqual(newer)
   })
@@ -247,7 +249,10 @@ describe('finishQuest', () => {
     const store = await open(clock)
     await store.finishQuest('2026-Q4', 'work', quest)
     const again = { ...quest, mainQuest: 'ship Cadence v2' }
-    expect(await refusal(store.finishQuest('2026-Q4', 'work', again))).toMatchObject({ reason: 'not-allowed' })
+    expect(await refusal(store.finishQuest('2026-Q4', 'work', again))).toMatchObject({
+      reason: 'not-allowed',
+      message: 'The Work Quest is already finished.',
+    })
     expect((await open(clock)).snapshot().quarters['2026-Q4']?.versions.work).toEqual([
       { savedOn: '2026-09-29', content: quest },
     ])
@@ -319,6 +324,13 @@ describe('a failed save', () => {
 
     await store.saveSetupDraft('2026-Q4', draft)
     expect((await open(clock)).snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+  })
+
+  it('is retried when it is the first-run meta', async () => {
+    const phone = flakyPhone()
+    phone.failNextWrites('UnknownError')
+    await open(clock, phone.connect)
+    expect(await stored('meta')).toEqual({ schemaVersion: 1, lastBackupAt: null, appearance: 'system' })
   })
 
   it('is retried once after an UnknownError', async () => {

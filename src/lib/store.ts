@@ -12,6 +12,8 @@ const SCHEMA_VERSION = 1
 export const QUESTS = ['work', 'life'] as const
 export type Quest = (typeof QUESTS)[number]
 
+const NAMES: Record<Quest, string> = { work: 'Work', life: 'Life' }
+
 export interface QuestContent {
   mainQuest: string
   whyItMatters: string
@@ -174,6 +176,19 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     meta: { schemaVersion: SCHEMA_VERSION, lastBackupAt: null, appearance: 'system' },
     readOnly: false,
   }
+  /** Writes the changes, retrying once on a fresh connection if iOS has dropped this one (spec §13.5) */
+  async function write(changes: Change[]) {
+    try {
+      await transact(kv, changes)
+    } catch (error) {
+      if (!CONNECTION_LOST.includes(String(nameOf(error)))) throw failedSave(error)
+      kv = connect()
+      await transact(kv, changes).catch((again: unknown) => {
+        throw failedSave(again)
+      })
+    }
+  }
+
   let hasMeta = false
   for (const [key, value] of await entries(kv)) {
     if (key === 'meta') {
@@ -185,7 +200,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
       snapshot.setupDrafts[key.slice('setup:'.length) as Quarter] = value as SetupDraft
     }
   }
-  if (!hasMeta) await transact(kv, [['meta', snapshot.meta]])
+  if (!hasMeta) await write([['meta', snapshot.meta]])
   snapshot.readOnly = snapshot.meta.schemaVersion > SCHEMA_VERSION
 
   const listeners = new Set<() => void>()
@@ -211,27 +226,22 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
   async function commit(changes: Change[], next: Snapshot) {
-    if (snapshot.readOnly) {
-      throw new StoreError('read-only', 'This data is from a newer Cadence. Update Cadence to make changes.')
-    }
-    try {
-      await transact(kv, changes)
-    } catch (error) {
-      if (!CONNECTION_LOST.includes(String(nameOf(error)))) throw failedSave(error)
-      kv = connect()
-      await transact(kv, changes).catch((again: unknown) => {
-        throw failedSave(again)
-      })
-    }
+    await write(changes)
     snapshot = next
     for (const listener of listeners) listener()
   }
 
   /** The write in progress. Each write waits its turn, so its rules see what the write before it saved. */
   let queue: Promise<unknown> = Promise.resolve()
-  function inTurn<A extends unknown[]>(write: (...args: A) => Promise<void>) {
+  function inTurn<A extends unknown[]>(operation: (...args: A) => Promise<void>) {
     return (...args: A) => {
-      const turn = queue.then(() => write(...args))
+      const turn = queue.then(() => {
+        // Newer data refuses every write, before any other rule is checked (spec §13.4)
+        if (snapshot.readOnly) {
+          throw new StoreError('read-only', 'This data is from a newer Cadence. Update Cadence to make changes.')
+        }
+        return operation(...args)
+      })
       queue = turn.catch(() => {})
       return turn
     }
@@ -242,7 +252,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     for (const quest of QUESTS) {
       // A finished Quest never turns back into a Draft (spec §10)
       if (isFinished(quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
-        throw new StoreError('not-allowed', `The ${quest} Quest is finished, so the setup Draft can't hold it.`)
+        throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is finished, so the setup Draft can't hold it.`)
       }
     }
     await commit([[`setup:${quarter}`, draft]], {
@@ -273,7 +283,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   async function finishQuest(quarter: Quarter, quest: Quest, typed: QuestContent) {
     refuseUnlessSetupTarget(quarter)
-    if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${quest} Quest is already finished.`)
+    if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is already finished.`)
     if (quest === 'life' && !isFinished(quarter, 'work')) {
       throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
     }

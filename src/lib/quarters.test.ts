@@ -160,6 +160,14 @@ describe('screenFor', () => {
       })
     })
 
+    it('sets up the Current Quarter even in its last 14 days', () => {
+      expect(screenFor(stored({ setUp: ['2026-Q3'] }), '2026-12-20')).toEqual({
+        name: 'ended',
+        quarter: '2026-Q3',
+        next: '2026-Q4',
+      })
+    })
+
     it('ignores a frozen Draft', () => {
       const snapshot = stored({ setUp: ['2026-Q3'], drafts: ['2026-Q4'] })
       expect(screenFor(snapshot, '2027-01-01')).toEqual({ name: 'ended', quarter: '2026-Q3', next: '2027-Q1' })
