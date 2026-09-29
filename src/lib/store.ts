@@ -5,7 +5,6 @@ import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyva
 import { APPEARANCES, type Appearance } from './appearance'
 import { promptFor } from './prompts'
 import {
-  firstDayOf,
   isFinished,
   isLocalDate,
   isPast,
@@ -18,7 +17,6 @@ import {
   nextQuarter,
   type Quarter,
   quarterOf,
-  weekdayDate,
 } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
@@ -564,7 +562,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     const date = today()
     // Only for today's date, on a Day of a set-up Quarter (spec §7.1)
     if (quarterOf(date) !== quarter) {
-      throw new StoreError('not-allowed', `Reflections start on Day 1, ${weekdayDate(firstDayOf(quarter))}.`)
+      throw new StoreError('not-allowed', `Reflections start on Day 1 of ${labelOf(quarter)}.`)
     }
     const record = snapshot.quarters[quarter]
     if (!record || !isSetUp(snapshot, quarter)) {

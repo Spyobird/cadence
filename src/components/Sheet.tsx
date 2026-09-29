@@ -1,6 +1,7 @@
 // A bottom sheet that rises over a scrim (DESIGN.md). A tap on the scrim or Escape closes it.
 
-import { type ReactNode, useEffect, useEffectEvent, useRef } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
+import { useEscape } from '../lib/keyboard'
 
 interface Props {
   /** What screen readers call it */
@@ -11,16 +12,8 @@ interface Props {
 
 export function Sheet({ label, onClose, children }: Props) {
   const sheet = useRef<HTMLDivElement>(null)
-  const close = useEffectEvent(onClose)
-
-  useEffect(() => {
-    sheet.current?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close()
-    }
-    document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [])
+  useEffect(() => sheet.current?.focus(), [])
+  useEscape(onClose)
 
   return (
     <>

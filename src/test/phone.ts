@@ -1,6 +1,6 @@
 // Fakes what jsdom can't know about the phone: how Cadence was opened, and storage that fails as iOS's can
 
-import { createStore, type UseStore } from 'idb-keyval'
+import { createStore, set, type UseStore } from 'idb-keyval'
 
 export function pretendOpened(from: 'home screen (iOS)' | 'home screen (display-mode)' | 'safari tab') {
   Object.defineProperty(navigator, 'standalone', {
@@ -85,3 +85,8 @@ export function pretendNoShareSheet() {
   }
   return { downloaded, restore }
 }
+
+/** Leaves data on the phone as a newer Cadence would, with a schema this build doesn't know (spec §13.4) */
+export const pretendNewerCadence = () =>
+  set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+

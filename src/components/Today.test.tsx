@@ -2,12 +2,11 @@ import 'fake-indexeddb/auto'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
-import { createStore, set } from 'idb-keyval'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
 import { isWriting } from '../lib/writing'
-import { aMomentLater, flakyPhone, pretendOpened } from '../test/phone'
+import { aMomentLater, flakyPhone, pretendNewerCadence, pretendOpened } from '../test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-11-12T10:00" */
@@ -300,7 +299,7 @@ describe('a new day (spec §3)', () => {
 describe('Reflections (spec §7)', () => {
   beforeEach(() => itIs('2026-11-12T10:00'))
 
-  const THURSDAY = "What's getting in the way right now, and what will you do when it shows up?"
+  const THURSDAYS_PROMPT = "What's getting in the way right now, and what will you do when it shows up?"
   const page = (name: 'Work' | 'Life') => within(screen.getByRole('tabpanel', { name }))
   const popup = (name: 'Work' | 'Life') => within(screen.getByRole('dialog', { name: `${name} Reflection` }))
   /** A Reflection already saved today, before Cadence opens */
@@ -314,7 +313,7 @@ describe('Reflections (spec §7)', () => {
 
     const work = popup('Work')
     expect(work.getByText('Work, Thu 12 Nov')).toBeInTheDocument()
-    expect(work.getByText(THURSDAY)).toBeInTheDocument()
+    expect(work.getByText(THURSDAYS_PROMPT)).toBeInTheDocument()
     expect(work.getByRole('textbox', { name: 'Reflection' })).toHaveFocus()
     expect(work.getByRole('button', { name: 'Save' })).toBeDisabled()
     await user.keyboard('Shipped the ring.{Enter}Pages next.  ')
@@ -371,7 +370,7 @@ describe('Reflections (spec §7)', () => {
 
     expect(await page('Work').findByText('Pages next, still')).toBeInTheDocument()
     expect((await open(() => now)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
-      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAYS_PROMPT } },
       '2026-11-13': {
         work: { text: 'Pages next, still', prompt: 'Looking at the week so far, are your Commitments actually moving your Success Metrics?' },
       },
@@ -532,7 +531,7 @@ describe('Reflections (spec §7)', () => {
 
   it('shows today\'s Reflection, but offers no change, when the data is from a newer Cadence (spec §13.4)', async () => {
     await reflected('work', 'Pages next')
-    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+    await pretendNewerCadence()
     await launch()
     expect(page('Work').getByText('Pages next')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /today's Reflection/ })).not.toBeInTheDocument()

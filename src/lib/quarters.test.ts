@@ -12,6 +12,7 @@ import {
   msToMidnight,
   type Quarter,
   quarterOf,
+  reflectionOn,
   screenFor,
   setupTarget,
   shortDate,
@@ -392,3 +393,29 @@ describe('currentVersion', () => {
     expect(currentVersion(snapshot, '2027-Q1', 'work')).toBeUndefined()
   })
 })
+
+describe('reflectionOn', () => {
+  const reflection = { text: 'Pages next', prompt: "What's the next step that would move this Quest forward?" }
+  const snapshot: Snapshot = {
+    quarters: {
+      '2026-Q4': {
+        versions: { work: [], life: [] },
+        reflections: { '2026-11-11': { work: reflection } },
+      },
+    },
+    setupDrafts: {},
+    meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
+    readOnly: false,
+  }
+
+  it("is the Quest's Reflection written on that date, from that date's Quarter", () => {
+    expect(reflectionOn(snapshot, '2026-11-11', 'work')).toEqual(reflection)
+  })
+
+  it('is missing for the other Quest, another Day, or a Quarter with nothing stored', () => {
+    expect(reflectionOn(snapshot, '2026-11-11', 'life')).toBeUndefined()
+    expect(reflectionOn(snapshot, '2026-11-12', 'work')).toBeUndefined()
+    expect(reflectionOn(snapshot, '2027-01-01', 'work')).toBeUndefined()
+  })
+})
+

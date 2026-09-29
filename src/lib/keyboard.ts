@@ -4,7 +4,7 @@
 // screen first parks focus on a hidden input, which keeps the keyboard up while the next field renders; that
 // field then takes focus from it.
 
-import { type SyntheticEvent, useEffect } from 'react'
+import { type SyntheticEvent, useEffect, useEffectEvent } from 'react'
 
 const PARKING = 'keyboard-parking'
 
@@ -74,5 +74,17 @@ export function useVisibleArea(): void {
       root.style.removeProperty('--visible-height')
       delete root.dataset.keyboard
     }
+  }, [])
+}
+
+/** Calls `onEscape` when Escape is pressed, from a hardware keyboard, while the component is on screen */
+export function useEscape(onEscape: () => void): void {
+  const escape = useEffectEvent(onEscape)
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') escape()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 }

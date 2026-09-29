@@ -1,15 +1,16 @@
 // The Reflection popup: a box centred over the blurred page, sized to the part the keyboard leaves visible, with
 // the day's Prompt and a field (spec §7.4)
 
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
-import { dropKeyboard, keepsFocus, takeKeyboard, useVisibleArea } from '../lib/keyboard'
+import { dropKeyboard, keepsFocus, takeKeyboard, useEscape, useVisibleArea } from '../lib/keyboard'
 import { promptFor } from '../lib/prompts'
 import { type Quarter, reflectionOn, shortDate } from '../lib/quarters'
 import { NAMES, type Quest, tidyReflection } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { primary, secondary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
+import { useGrowToFit } from './Fields'
 
 interface Props {
   quest: Quest
@@ -39,13 +40,7 @@ export function ReflectionPopup({ quest, quarter, onClose }: Props) {
   useVisibleArea()
   // The tap that opened the popup is holding the keyboard for the field
   useEffect(() => takeKeyboard(field.current), [])
-  // The field grows with what's written
-  useLayoutEffect(() => {
-    const grow = field.current
-    if (!grow) return
-    grow.style.height = 'auto'
-    grow.style.height = `${grow.scrollHeight}px`
-  }, [text])
+  useGrowToFit(field, text)
   // An update never reloads while a Reflection is being written: its words aren't kept anywhere else (spec §2.3)
   useEffect(() => {
     setWriting(true)
@@ -63,14 +58,7 @@ export function ReflectionPopup({ quest, quarter, onClose }: Props) {
   }
 
   // Escape is Cancel, or Keep writing while the question is up
-  const escape = useEffectEvent(() => (asking ? setAsking(false) : cancel()))
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') escape()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
+  useEscape(() => (asking ? setAsking(false) : cancel()))
 
   /** Closes once the save has landed. A refused save keeps the words in the field, so they can be copied. */
   async function save() {
@@ -89,10 +77,10 @@ export function ReflectionPopup({ quest, quarter, onClose }: Props) {
   return (
     <>
       <div aria-hidden className="fade-in fixed inset-0 z-40 bg-void/70 backdrop-blur-sm" />
-      {/* A tap outside the box is Cancel */}
+      {/* A tap outside the box is Cancel. The box clears the notch and the home indicator, or sits close on the keyboard. */}
       <div
         data-testid="outside-the-popup"
-        className="writing-screen z-50 items-center justify-center p-4"
+        className="writing-screen z-50 items-center justify-center px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[max(16px,env(safe-area-inset-bottom))] in-data-[keyboard=up]:pb-4"
         onClick={(event) => event.target === event.currentTarget && cancel()}
       >
         <div

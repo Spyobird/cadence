@@ -3,11 +3,10 @@ import { readFileSync } from 'node:fs'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
-import { createStore, set } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
 import { open, type QuestContent } from './lib/store'
-import { aMomentLater, pretendOpened } from './test/phone'
+import { aMomentLater, pretendNewerCadence, pretendOpened } from './test/phone'
 
 const clock = () => new Date('2026-09-29T10:00')
 
@@ -164,7 +163,7 @@ describe('data from a newer Cadence', () => {
   beforeEach(() => pretendOpened('home screen (iOS)'))
 
   it('shows a banner, and setup saves nothing, without a failed-save message', async () => {
-    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+    await pretendNewerCadence()
     await launch()
     expect(screen.getByText('This data is from a newer Cadence. Update Cadence to make changes.')).toBeInTheDocument()
 

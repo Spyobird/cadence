@@ -2,11 +2,18 @@ import 'fake-indexeddb/auto'
 import { render, screen, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
-import { createStore, set } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
-import { aMomentLater, flakyPhone, pretendNoShareSheet, pretendOpened, pretendShareSheet, pretendStorage } from '../test/phone'
+import {
+  aMomentLater,
+  flakyPhone,
+  pretendNewerCadence,
+  pretendNoShareSheet,
+  pretendOpened,
+  pretendShareSheet,
+  pretendStorage,
+} from '../test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-11-12T10:00" */
@@ -343,7 +350,7 @@ describe('restoring onto a fresh install', () => {
 
 describe('data from a newer Cadence (spec §13.4)', () => {
   beforeEach(async () => {
-    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+    await pretendNewerCadence()
   })
 
   it("still exports, but doesn't import, which would change it", async () => {

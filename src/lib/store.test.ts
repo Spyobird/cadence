@@ -358,7 +358,7 @@ describe('a Past Quarter', () => {
 })
 
 describe('Reflections', () => {
-  const THURSDAY = "What's getting in the way right now, and what will you do when it shows up?"
+  const THURSDAYS_PROMPT = "What's getting in the way right now, and what will you do when it shows up?"
 
   /** Q4 2026, set up on 29 Sep */
   async function setUpQ4() {
@@ -375,7 +375,7 @@ describe('Reflections', () => {
 
     for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
       expect(snapshot.quarters['2026-Q4']?.reflections).toEqual({
-        '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+        '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAYS_PROMPT } },
       })
     }
   })
@@ -391,8 +391,8 @@ describe('Reflections', () => {
     for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
       expect(snapshot.quarters['2026-Q4']?.reflections).toEqual({
         '2026-11-12': {
-          work: { text: 'Pages done, the fold next', prompt: THURSDAY },
-          life: { text: 'Ran 4K', prompt: THURSDAY },
+          work: { text: 'Pages done, the fold next', prompt: THURSDAYS_PROMPT },
+          life: { text: 'Ran 4K', prompt: THURSDAYS_PROMPT },
         },
       })
     }
@@ -415,7 +415,7 @@ describe('Reflections', () => {
 
     await store.saveReflection('2026-Q4', 'work', ' \n ')
     expect(store.snapshot().quarters['2026-Q4']?.reflections).toEqual({
-      '2026-11-12': { life: { text: 'Ran 4K', prompt: THURSDAY } },
+      '2026-11-12': { life: { text: 'Ran 4K', prompt: THURSDAYS_PROMPT } },
     })
     await store.removeReflection('2026-Q4', 'life')
     for (const snapshot of [store.snapshot(), (await open(clock)).snapshot()]) {
@@ -434,7 +434,7 @@ describe('Reflections', () => {
     await store.saveReflection('2026-Q4', 'life', 'Ran 4K')
 
     expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
-      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAY } },
+      '2026-11-12': { work: { text: 'Pages next', prompt: THURSDAYS_PROMPT } },
       '2026-11-13': {
         life: { text: 'Ran 4K', prompt: 'Looking at the week so far, are your Commitments actually moving your Success Metrics?' },
       },
@@ -457,7 +457,7 @@ describe('Reflections', () => {
       })
     }
     expect((await open(clock)).snapshot().quarters['2026-Q4']?.reflections).toEqual({
-      '2026-12-31': { work: { text: 'The last Day', prompt: THURSDAY } },
+      '2026-12-31': { work: { text: 'The last Day', prompt: THURSDAYS_PROMPT } },
     })
   })
 
@@ -465,7 +465,7 @@ describe('Reflections', () => {
     const store = await setUpQ4() // on 29 Sep, before Q4's Day 1
     expect(await refusal(store.saveReflection('2026-Q4', 'work', 'Ready'))).toMatchObject({
       reason: 'not-allowed',
-      message: 'Reflections start on Day 1, Thursday 1 Oct.',
+      message: 'Reflections start on Day 1 of Q4 2026.',
     })
     itIs('2026-11-12T10:00') // nor for a Quarter further ahead
     expect(await refusal(store.saveReflection('2027-Q1', 'work', 'Ready'))).toMatchObject({ reason: 'not-allowed' })

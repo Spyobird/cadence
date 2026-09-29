@@ -1,6 +1,6 @@
 // The owner's words on a writing screen: one line of prose, or a list of one-line items (spec §4.1, §5.2)
 
-import { type KeyboardEvent, type Ref, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, type Ref, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { holdKeyboard, keepsFocus, takeKeyboard } from '../lib/keyboard'
 import { isWritten } from '../lib/scaffold'
 import { joinLines, MAX_ITEMS } from '../lib/store'
@@ -22,15 +22,20 @@ interface LineProps {
   fieldRef?: Ref<HTMLTextAreaElement>
 }
 
+/** Grows a field to fit what's written in it */
+export function useGrowToFit(field: RefObject<HTMLTextAreaElement | null>, value: string): void {
+  useLayoutEffect(() => {
+    const growing = field.current
+    if (!growing) return
+    growing.style.height = 'auto'
+    growing.style.height = `${growing.scrollHeight}px`
+  }, [field, value])
+}
+
 /** One line of the owner's words, in serif ink at L size, growing to fit as it wraps */
 export function LineField({ value, onChange, onEnter, onBackspaceEmpty, capitalise, fieldRef, ...rest }: LineProps) {
   const own = useRef<HTMLTextAreaElement>(null)
-  useLayoutEffect(() => {
-    const field = own.current
-    if (!field) return
-    field.style.height = 'auto'
-    field.style.height = `${field.scrollHeight}px`
-  }, [value])
+  useGrowToFit(own, value)
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
