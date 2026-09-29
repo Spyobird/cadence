@@ -346,8 +346,9 @@ describe('isBackupDue (spec §6.3)', () => {
     expect(isBackupDue(backedUp(at), today)).toBe(due === 'due')
   })
 
-  it('counts only the latest set-up Quarter ending, not an earlier one', () => {
-    expect(isBackupDue(backedUp('2026-12-31T22:00', ['2026-Q4', '2027-Q1']), '2027-01-02')).toBe(false)
+  it('counts any set-up Quarter ending, though the next one was set up before it ended', () => {
+    expect(isBackupDue(backedUp('2026-12-31T22:00', ['2026-Q4', '2027-Q1']), '2027-01-02')).toBe(true)
+    expect(isBackupDue(backedUp('2027-01-01T09:00', ['2026-Q4', '2027-Q1']), '2027-01-02')).toBe(false)
   })
 
   it('counts nothing ending before anything is set up', () => {

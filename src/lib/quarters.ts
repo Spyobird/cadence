@@ -11,9 +11,10 @@ export type Quarter = `${number}-Q${1 | 2 | 3 | 4}`
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-/** The phone's local calendar date at that moment */
-export function localDate(moment: Date): LocalDate {
-  return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
+/** The phone's local calendar date at that moment, a Date or epoch ms */
+export function localDate(moment: Date | number): LocalDate {
+  const at = new Date(moment)
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
 }
 
 /** How long from that moment until the next local midnight, when the phone's date changes */
@@ -168,9 +169,19 @@ export function weekdayDate(date: LocalDate): string {
 
 /** "Mon 12 Oct", or "Mon 12 Oct 2026" with its year */
 export function shortDate(date: LocalDate, withYear = false): string {
-  const [year] = ymd(date)
-  const [weekday, day, month] = weekdayDate(date).split(' ')
-  return `${weekday!.slice(0, 3)} ${day} ${month}${withYear ? ` ${year}` : ''}`
+  const [year, month, day] = ymd(date)
+  const short = `${WEEKDAYS[weekdayOf(date)]!.slice(0, 3)} ${day} ${MONTHS[month - 1]!.slice(0, 3)}`
+  return withYear ? `${short} ${year}` : short
+}
+
+/**
+ * When the last backup was: its date, how many calendar days ago, and whether it was this year. Undefined before
+ * any backup. A backup dated after today, by another phone's clock, counts as today's.
+ */
+export function sinceBackup(lastBackupAt: number | null, today: LocalDate) {
+  if (lastBackupAt === null) return undefined
+  const on = localDate(lastBackupAt)
+  return { on, days: Math.max(0, daysUntil(on, today)), thisYear: ymd(on)[0] === ymd(today)[0] }
 }
 
 /** How many of a Quarter's last days aim setup at the Upcoming Quarter instead (spec §3.2) */
@@ -202,19 +213,15 @@ export function isSetUp(snapshot: Snapshot, quarter: Quarter): boolean {
 const BACKUP_EVERY = 7
 
 /**
- * A backup is due when none has been made, when the last is 7 or more days old, or when the latest set-up Quarter
- * has ended since it was made (spec §6.3). Days are counted on the calendar, as "3 days ago" reads.
+ * A backup is due when none has been made, when the last is 7 or more days old, or when a set-up Quarter has ended
+ * since it was made (spec §6.3). Days are counted on the calendar, as "3 days ago" reads.
  */
 export function isBackupDue(snapshot: Snapshot, today: LocalDate): boolean {
-  const { lastBackupAt } = snapshot.meta
-  if (lastBackupAt === null) return true
-  const backedUpOn = localDate(new Date(lastBackupAt))
-  if (daysUntil(backedUpOn, today) >= BACKUP_EVERY) return true
-  const latest = (Object.keys(snapshot.quarters) as Quarter[])
-    .filter((quarter) => isSetUp(snapshot, quarter))
-    .sort()
-    .at(-1)
-  return !!latest && isPast(latest, today) && backedUpOn <= lastDayOf(latest)
+  const last = sinceBackup(snapshot.meta.lastBackupAt, today)
+  if (!last || last.days >= BACKUP_EVERY) return true
+  return (Object.keys(snapshot.quarters) as Quarter[]).some(
+    (quarter) => isSetUp(snapshot, quarter) && isPast(quarter, today) && last.on <= lastDayOf(quarter),
+  )
 }
 
 /** Which screen Cadence opens on (spec §3.1) */

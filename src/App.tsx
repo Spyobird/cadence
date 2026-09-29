@@ -25,19 +25,20 @@ function Screens() {
   // Finishing Life moves screenFor on, but setup stays on screen with "Q4 2026 is set up" until the owner leaves it
   const [inSetup, setInSetup] = useState(settingUp)
   if (settingUp && !inSetup) setInSetup(true)
-  const [backupOpen, setBackupOpen] = useState(false)
+  /** The Backup screen is open, from Today's menu or from a blank setup */
+  const [backupFrom, setBackupFrom] = useState<'today' | 'setup'>()
 
-  if (backupOpen) {
+  if (backupFrom) {
     // An import can change the screen underneath, so leaving Backup goes where the data now says (spec §12.3)
     const leave = () => {
-      setBackupOpen(false)
+      setBackupFrom(undefined)
       setInSetup(settingUp)
     }
-    return <Backup back={inSetup ? 'Close' : 'Today'} onBack={leave} />
+    return <Backup back={backupFrom === 'today' ? 'Today' : 'Close'} onBack={leave} />
   }
   // Setup places the banners itself, inside the screen it fits to the keyboard
   if (inSetup) {
-    return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} onRestore={() => setBackupOpen(true)} />
+    return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} onRestore={() => setBackupFrom('setup')} />
   }
-  return <Today quarter={screen.quarter} onBackup={() => setBackupOpen(true)} />
+  return <Today quarter={screen.quarter} onBackup={() => setBackupFrom('today')} />
 }

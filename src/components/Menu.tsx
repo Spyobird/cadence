@@ -5,7 +5,7 @@ import { useCadence } from '../hooks/useCadence'
 import { labelOf, type Quarter } from '../lib/quarters'
 import { NAMES, QUESTS } from '../lib/store'
 import { AppearanceSwitch } from './AppearanceSwitch'
-import { lastBackupWords } from './Backup'
+import { lastBackupWords } from './backupWords'
 import { Sheet } from './Sheet'
 
 export function MenuButton({ ref, onOpen }: { ref: Ref<HTMLButtonElement>; onOpen: () => void }) {

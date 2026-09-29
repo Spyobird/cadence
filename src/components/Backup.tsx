@@ -4,32 +4,22 @@
 import { type ChangeEvent, useEffect, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { isPersisted, isStandalone } from '../lib/launch'
-import { daysUntil, labelOf, type LocalDate, localDate, shortDate } from '../lib/quarters'
+import { labelOf, localDate, shortDate } from '../lib/quarters'
 import { saveFile } from '../lib/share'
 import type { Preview } from '../lib/store'
 import { Banners } from './Banners'
-import { plain, primary, secondary } from './buttons'
+import { lastBackupWords } from './backupWords'
+import { nav, plain, primary, secondary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { SAFARI_TAB_RISK } from './SafariBanner'
 import { Sheet } from './Sheet'
 
-/** When the last backup was: in the menu's Backup row, and on this screen */
-export function lastBackupWords(lastBackupAt: number | null, today: LocalDate) {
-  if (lastBackupAt === null) return { menu: 'Never', screen: 'No backup yet' }
-  const on = localDate(new Date(lastBackupAt))
-  // A backup dated later than today (another phone's clock) reads as today's
-  const days = Math.max(0, daysUntil(on, today))
-  const ago = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`
-  const sameYear = on.slice(0, 4) === today.slice(0, 4)
-  return { menu: ago[0]!.toUpperCase() + ago.slice(1), screen: `Last backup: ${shortDate(on, !sameYear)}, ${ago}` }
-}
-
 /** "Backup from Mon 12 Oct 2026 · Q4 2026 · 43 Reflections", with every Quarter it holds (spec §12.3) */
-function previewLine({ exportedAt, quarters, reflections }: Preview) {
+function previewLine({ exportedAt, quarters, reflectionCount }: Preview) {
   return [
-    `Backup from ${shortDate(localDate(new Date(exportedAt)), true)}`,
+    `Backup from ${shortDate(localDate(exportedAt), true)}`,
     ...(quarters.length ? [quarters.map(labelOf).join(', ')] : []),
-    `${reflections} ${reflections === 1 ? 'Reflection' : 'Reflections'}`,
+    `${reflectionCount} ${reflectionCount === 1 ? 'Reflection' : 'Reflections'}`,
   ].join(' · ')
 }
 
@@ -103,7 +93,7 @@ export function Backup({ back, onBack }: Props) {
       <Banners />
       <header className="sticky top-0 z-10 bg-void pt-safe">
         <div className="mx-auto grid max-w-[600px] grid-cols-[6em_1fr_6em] items-center px-gutter">
-          <button type="button" className={`${plain} flex items-center gap-1 justify-self-start`} onClick={onBack}>
+          <button type="button" className={`${nav} flex items-center gap-1 justify-self-start`} onClick={onBack}>
             {back === 'Today' && (
               <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current stroke-2" strokeLinecap="round">
                 <path d="M10 3.5 5.5 8l4.5 4.5" />
@@ -124,11 +114,12 @@ export function Backup({ back, onBack }: Props) {
             Export backup
           </button>
           {/* A label, so a tap opens the Files picker itself (research: iOS storage durability §7c) */}
+          {/* Off for data from a newer Cadence, which nothing may change (spec §13.4): the banner says why */}
           <label
-            className={`${secondary} inline-flex cursor-pointer items-center has-focus-visible:outline-2 has-focus-visible:outline-ink`}
+            className={`${secondary} inline-flex cursor-pointer items-center has-focus-visible:outline-2 has-focus-visible:outline-ink has-disabled:cursor-default has-disabled:text-faint`}
           >
             Import a backup
-            <input type="file" className="sr-only" onChange={pick} />
+            <input type="file" className="sr-only" onChange={pick} disabled={snapshot.readOnly} />
           </label>
         </div>
         {problem && (
@@ -149,7 +140,8 @@ export function Backup({ back, onBack }: Props) {
             <button type="button" className={secondary} onClick={exportNow} disabled={exporting}>
               Export what's here first
             </button>
-            <button type="button" className={primary} onClick={() => replace(preview)}>
+            {/* Not gold: gold marks what to tap next, and this can't be undone */}
+            <button type="button" className={secondary} onClick={() => replace(preview)}>
               Replace everything
             </button>
             <button type="button" className={plain} onClick={() => setPreview(null)}>

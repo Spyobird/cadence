@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto'
 import { render, screen, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
+import { createStore, set } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
@@ -128,17 +129,21 @@ describe('Export', () => {
   })
 })
 
+/** A Backup file exported on Mon 12 Oct 2026, holding this data */
+function exportedOn12Oct(data: Record<string, unknown>) {
+  const backup = { app: 'cadence', schemaVersion: 1, exportedAt: new Date('2026-10-12T20:00').getTime(), data }
+  return new File([JSON.stringify(backup)], 'cadence-backup-2026-10-12.json', { type: 'application/json' })
+}
+
 /** A Backup exported on Mon 12 Oct 2026: Q4 2026 set up, with one Reflection, the Work Quest's Main Quest this */
 function backupFrom12Oct(mainQuest = 'ship the onboarding flow by November') {
-  const data = {
+  return exportedOn12Oct({
     meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
     'quarter:2026-Q4': {
       versions: { work: [{ savedOn: '2026-09-29', content: { ...work, mainQuest } }], life: [{ savedOn: '2026-09-29', content: life }] },
       reflections: { '2026-10-12': { work: { text: 'Drew the first screens', prompt: 'What is the one thing?' } } },
     },
-  }
-  const backup = { app: 'cadence', schemaVersion: 1, exportedAt: new Date('2026-10-12T20:00').getTime(), data }
-  return new File([JSON.stringify(backup)], 'cadence-backup-2026-10-12.json', { type: 'application/json' })
+  })
 }
 
 describe('Import', () => {
@@ -208,6 +213,22 @@ describe('Import', () => {
     await user.click(preview.getByRole('button', { name: "Keep what's here" }))
     expect(screen.getByText('No backup yet')).toBeInTheDocument()
     expect(await workOnToday(user)).toBe(work.mainQuest)
+  })
+
+  it('goes back to Today by its own name, even when the backup opens Cadence on setup', async () => {
+    await launch()
+    const user = await openBackup()
+    const midSetup = {
+      meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
+      'setup:2026-Q4': { at: { quest: 'work', part: 'mainQuest' }, work: { mainQuest: 'ship' }, life: {} },
+    }
+    await user.upload(screen.getByLabelText('Import a backup'), exportedOn12Oct(midSetup))
+    const preview = within(await screen.findByRole('dialog', { name: 'Replace everything with this backup?' }))
+    await user.click(preview.getByRole('button', { name: 'Replace everything' }))
+    await screen.findByText('Last backup: Mon 12 Oct, 31 days ago')
+
+    await user.click(screen.getByRole('button', { name: 'Today' }))
+    expect(screen.getByRole('textbox', { name: 'My Work Main Quest is to' })).toHaveValue('ship')
   })
 
   it("exports what's here first, then comes back to the choice", async () => {
@@ -317,5 +338,23 @@ describe('restoring onto a fresh install', () => {
     await user.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
     await aMomentLater()
     expect(restoreLink()).not.toBeInTheDocument()
+  })
+})
+
+describe('data from a newer Cadence (spec §13.4)', () => {
+  beforeEach(async () => {
+    await set('meta', { schemaVersion: 2, lastBackupAt: null, appearance: 'system' }, createStore('cadence', 'kv'))
+  })
+
+  it("still exports, but doesn't import, which would change it", async () => {
+    const shared = pretendShareSheet('saved to Files')
+    await launch()
+    const user = await openBackup()
+    expect(screen.getByLabelText('Import a backup')).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Export backup' }))
+    await aMomentLater()
+    expect(shared.map((file) => file.name)).toEqual(['cadence-backup-2026-11-12.json'])
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

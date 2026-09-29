@@ -1,4 +1,6 @@
-export type Appearance = 'system' | 'light' | 'dark'
+/** The Appearance control's three choices (spec §2.8) */
+export const APPEARANCES = ['system', 'light', 'dark'] as const
+export type Appearance = (typeof APPEARANCES)[number]
 
 /** Each look's --void (DESIGN.md): the page background, and the status-bar strip that matches it */
 export const VOID = { light: '#F4F5F7', dark: '#0F1113' } as const

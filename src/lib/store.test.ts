@@ -106,7 +106,7 @@ describe('data from a newer Cadence', () => {
     expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.setAppearance('light'))).toMatchObject({ reason: 'read-only' })
     expect(await refusal(store.markBackedUp())).toMatchObject({ reason: 'read-only' })
-    const backup = { exportedAt: 1762941600000, quarters: [], reflections: 0, data: { meta: { ...newer, schemaVersion: 1 } } }
+    const backup = { exportedAt: 1762941600000, quarters: [], reflectionCount: 0, data: { meta: { ...newer, schemaVersion: 1 } } }
     expect(await refusal(store.replaceWith(backup))).toMatchObject({ reason: 'read-only' })
     itIs('2026-10-01T09:00') // read-only comes first, before any other rule
     expect(await refusal(store.saveSetupDraft('2026-Q3', draft))).toMatchObject({ reason: 'read-only' })
@@ -452,7 +452,7 @@ describe('the Backup', () => {
     expect(await store.readBackup(picked(backupText({ data })))).toMatchObject({
       exportedAt: 1762941600000,
       quarters: ['2026-Q3', '2026-Q4', '2027-Q1'], // Q1 2027 has only a setup Draft
-      reflections: 3,
+      reflectionCount: 3,
     })
   })
 
@@ -539,12 +539,27 @@ describe('the Backup', () => {
     ['an edit Draft with a part missing', { data: dataWith('edit:2026-Q4:life', { startedAt: 1762930000000, content: { mainQuest: 'run' } }) }],
     ['a record with a field Cadence never stores', { data: dataWith('meta', { ...inUse.meta, streak: 12 }) }],
     ['a field named like one every object has', { data: dataWith('meta', { ...inUse.meta, constructor: 1 }) }],
+    ['a Reflection in a Quarter not set up', { data: q4With({ versions: { ...q4.versions, life: [] } }) }],
+    ['a setup Draft holding a finished Quest', { data: dataWith('setup:2026-Q4', { ...setupAt('mainQuest'), work: { mainQuest: 'ship' } }) }],
   ])('says "This backup is damaged and can\'t be used." for %s', async (_, changes) => {
     const store = await open(clock)
     expect(await store.readBackup(picked(backupText(changes)))).toEqual({
       problem: 'damaged',
       message: "This backup is damaged and can't be used.",
     })
+  })
+
+  it("says a file that can't be read is damaged", async () => {
+    const store = await open(clock)
+    const unreadable = { text: () => Promise.reject(new DOMException('Lockdown Mode', 'NotReadableError')) } as Blob
+    expect(await store.readBackup(unreadable)).toMatchObject({ problem: 'damaged' })
+  })
+
+  it("replaces everything only with a backup it has checked", async () => {
+    const store = await open(clock)
+    const unchecked = { exportedAt: 1762941600000, quarters: [], reflectionCount: 0, data: { meta: inUse.meta } }
+    expect(await refusal(store.replaceWith(unchecked))).toMatchObject({ reason: 'not-allowed' })
+    expect(await everythingStored()).toEqual(inUse)
   })
 
   it('accepts an empty Obstacle, a Quarter with only its Work Quest, and a Draft with no words yet', async () => {

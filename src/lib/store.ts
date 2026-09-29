@@ -2,12 +2,13 @@
 // loaded into memory by open(); every read comes from memory, and memory changes only once a write has landed.
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
-import type { Appearance } from './appearance'
+import { APPEARANCES, type Appearance } from './appearance'
 import {
   isFinished,
   isLocalDate,
   isPast,
   isQuarter,
+  isSetUp,
   labelOf,
   lastDayOf,
   type LocalDate,
@@ -116,7 +117,7 @@ export interface Preview {
   /** Every Quarter it holds anything for, a Draft included, in calendar order */
   quarters: Quarter[]
   /** How many Reflections it holds, across its Quarters */
-  reflections: number
+  reflectionCount: number
   /** Every key it holds, checked */
   data: Record<string, unknown>
 }
@@ -196,6 +197,13 @@ export function switchTargetFrom(snapshot: Snapshot, today: LocalDate, from: Qua
   return to
 }
 
+/** A finished Quest the Draft holds words for, or sits on: a finished Quest never turns back into a Draft (spec §10) */
+function finishedQuestIn(snapshot: Snapshot, quarter: Quarter, draft: SetupDraft): Quest | undefined {
+  return QUESTS.find(
+    (quest) => isFinished(snapshot, quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0),
+  )
+}
+
 /** The storage keys (spec §13.2, ADR 0004) */
 const QUARTER_KEY = 'quarter:'
 const SETUP_KEY = 'setup:'
@@ -234,7 +242,7 @@ const isText = (value: unknown) => typeof value === 'string'
 const isList = (value: unknown) => Array.isArray(value) && value.every(isText)
 const isTime = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0
 const isQuest = (value: unknown): value is Quest => QUESTS.includes(value as Quest)
-const isAppearance = (value: unknown) => ['system', 'light', 'dark'].includes(value as string)
+const isAppearance = (value: unknown) => APPEARANCES.includes(value as Appearance)
 
 /** A Quest's words, as typed: each part optional, a line or a list */
 const PART_CHECKS: Record<keyof QuestContent, (words: unknown) => boolean> = {
@@ -326,14 +334,24 @@ function checkBackup(text: string): Preview | Problem {
   ) {
     return problem('damaged')
   }
-  const keys = Object.keys(data).filter((key) => key !== 'meta')
-  const days = keys
-    .filter((key) => key.startsWith(QUARTER_KEY))
-    .flatMap((key) => Object.values((data[key] as QuarterRecord).reflections))
+  // And the rules the store keeps across keys: Reflections only in a set-up Quarter, and no finished Quest in a Draft
+  const loaded = snapshotOf(new Map(Object.entries(data)))
+  const quarters = Object.entries(loaded.quarters) as [Quarter, QuarterRecord][]
+  if (
+    quarters.some(([quarter, record]) => !isSetUp(loaded, quarter) && Object.keys(record.reflections).length > 0) ||
+    (Object.entries(loaded.setupDrafts) as [Quarter, SetupDraft][]).some(([quarter, draft]) =>
+      finishedQuestIn(loaded, quarter, draft),
+    )
+  ) {
+    return problem('damaged')
+  }
+  const days = quarters.flatMap(([, record]) => Object.values(record.reflections))
+  // Every key but meta names its Quarter second: quarter:2026-Q4, setup:2026-Q4, edit:2026-Q4:work
+  const held = Object.keys(data).flatMap((key) => (key === 'meta' ? [] : [key.split(':')[1] as Quarter]))
   return {
     exportedAt: exportedAt as number,
-    quarters: [...new Set(keys.map((key) => key.split(':')[1] as Quarter))].sort(),
-    reflections: days.reduce((count, day) => count + Object.keys(day).length, 0),
+    quarters: [...new Set(held)].sort(),
+    reflectionCount: days.reduce((count, day) => count + Object.keys(day).length, 0),
     data,
   }
 }
@@ -461,11 +479,9 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   async function saveSetupDraft(quarter: Quarter, draft: SetupDraft) {
     refuseUnlessSetupTarget(quarter)
-    for (const quest of QUESTS) {
-      // A finished Quest never turns back into a Draft (spec §10)
-      if (isFinished(snapshot, quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
-        throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is finished, so the setup Draft can't hold it.`)
-      }
+    const finished = finishedQuestIn(snapshot, quarter, draft)
+    if (finished) {
+      throw new StoreError('not-allowed', `The ${NAMES[finished]} Quest is finished, so the setup Draft can't hold it.`)
     }
     await commit([[setupKey(quarter), draft]], {
       ...snapshot,
@@ -528,15 +544,13 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     )
   }
 
-  async function setAppearance(appearance: Appearance) {
-    const meta: Meta = { ...snapshot.meta, appearance }
+  /** Changes some of meta, keeping the rest as it was */
+  async function saveMeta(changes: Partial<Meta>) {
+    const meta: Meta = { ...snapshot.meta, ...changes }
     await commit([['meta', meta]], { ...snapshot, meta })
   }
-
-  async function markBackedUp() {
-    const meta: Meta = { ...snapshot.meta, lastBackupAt: clock().getTime() }
-    await commit([['meta', meta]], { ...snapshot, meta })
-  }
+  const setAppearance = (appearance: Appearance) => saveMeta({ appearance })
+  const markBackedUp = () => saveMeta({ lastBackupAt: clock().getTime() })
 
   /** From memory, so the tap that shares it still counts as a tap when the share sheet opens (spec §12.2) */
   function exportBackup() {
@@ -549,7 +563,19 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     return new File([JSON.stringify(backup, null, 2)], `cadence-backup-${today()}.json`, { type: 'application/json' })
   }
 
+  /** The Backups readBackup has checked: only these can replace everything */
+  const checked = new WeakSet<Preview>()
+
+  async function readBackup(file: Blob) {
+    // A file iOS won't let Cadence read (in Lockdown Mode, say) can't be used
+    const text = await file.text().catch(() => undefined)
+    const backup = text === undefined ? problem('damaged') : checkBackup(text)
+    if (!('problem' in backup)) checked.add(backup)
+    return backup
+  }
+
   async function replaceWith(backup: Preview) {
+    if (!checked.has(backup)) throw new StoreError('not-allowed', 'Only a checked backup can replace everything.')
     const data = new Map(Object.entries(backup.data))
     data.set('meta', { ...(data.get('meta') as Meta), lastBackupAt: backup.exportedAt })
     await commit([...data], snapshotOf(data), true)
@@ -569,7 +595,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     setAppearance: inTurn(setAppearance),
     exportBackup,
     markBackedUp: inTurn(markBackedUp),
-    readBackup: async (file) => checkBackup(await file.text()),
+    readBackup,
     replaceWith: inTurn(replaceWith),
   }
 }
