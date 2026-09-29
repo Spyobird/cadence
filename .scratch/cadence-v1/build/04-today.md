@@ -53,4 +53,4 @@ Cadence opens on Today: the ring, then one page per Quest with the Main Quest la
 
 ## Phone check
 
-Checked by the owner on 29 Sep 2026, at `07c7f5b` (live at the address): Today works. The check covered the ring before Day 1, swiping and folding the pages, the Main Quest's face and Appearance across a relaunch. Setup's part of the real-use check was done with ticket 03. The iOS version wasn't noted.
+Checked by the owner on 29 Sep 2026, at `07c7f5b` (live at the address), against the steps given at merge: the ring before Day 1, swiping and folding the pages, the Main Quest's face offline, and Appearance across a relaunch. The owner reported "it works nice", with nothing to change. Setup's part of the real-use check was done with ticket 03. The iOS version wasn't noted.
