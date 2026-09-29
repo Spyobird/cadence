@@ -22,6 +22,7 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - The Backup screen says when the last backup was, and whether the iPhone keeps Cadence's storage.
 - The menu shows a gold dot when a backup is due, and its Backup row says when the last one was.
 - A fresh install offers "Restore from a backup" on its first setup screen.
+- A Reflection per Quest per Day, written under the day's Prompt from each Quest's page on Today, and changeable until midnight.
 
 ### Changed
 
