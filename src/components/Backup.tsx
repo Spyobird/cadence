@@ -45,6 +45,8 @@ export function Backup({ back, onBack }: Props) {
   const [problem, setProblem] = useState<string | null>(null)
   /** The file picked, checked, waiting on the owner's choice */
   const [preview, setPreview] = useState<Preview | null>(null)
+  /** The share sheet is open: a second tap would open another, or fall back to a download */
+  const [exporting, setExporting] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const showFailure = (error: unknown) => setFailure(failureOf(error))
   const [standalone] = useState(isStandalone)
@@ -53,18 +55,23 @@ export function Backup({ back, onBack }: Props) {
     if (standalone) void isPersisted().then(setPersisted)
   }, [standalone])
 
-  // Read live: whether iOS keeps the storage isn't stored (spec §13.2)
+  // Read live: whether iOS keeps the storage isn't stored (spec §13.2). A blank keeps the row's height meanwhile.
   const storage = !standalone
     ? SAFARI_TAB_RISK
     : persisted === undefined
-      ? ''
+      ? '\u00a0'
       : persisted
         ? 'On this iPhone, marked persistent'
         : 'On this iPhone, not marked persistent, so iOS could clear it to free up space'
 
   /** In the tap, before any await, so iOS opens the share sheet (spec §12.2) */
   async function exportNow() {
-    if (await saveFile(exportBackup())) await markBackedUp().catch(showFailure)
+    setExporting(true)
+    try {
+      if (await saveFile(exportBackup())) await markBackedUp().catch(showFailure)
+    } finally {
+      setExporting(false)
+    }
   }
 
   /** The whole file is checked before anything is touched (spec §12.3) */
@@ -96,20 +103,30 @@ export function Backup({ back, onBack }: Props) {
       <Banners />
       <header className="sticky top-0 z-10 bg-void pt-safe">
         <div className="mx-auto grid max-w-[600px] grid-cols-[6em_1fr_6em] items-center px-gutter">
-          <button type="button" className={`${plain} justify-self-start`} onClick={onBack}>
+          <button type="button" className={`${plain} flex items-center gap-1 justify-self-start`} onClick={onBack}>
+            {back === 'Today' && (
+              <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current stroke-2" strokeLinecap="round">
+                <path d="M10 3.5 5.5 8l4.5 4.5" />
+              </svg>
+            )}
             {back}
           </button>
           <h1 className="text-center font-semibold">Backup</h1>
         </div>
       </header>
       <main className="mx-auto max-w-[600px] px-gutter pb-safe">
-        <p className="border-b border-line py-3.5 tabular-nums">{lastBackupWords(snapshot.meta.lastBackupAt, today).screen}</p>
-        <p className="min-h-[53px] border-b border-line py-3.5">{storage}</p>
+        <p className="border-b border-line py-3.5 tabular-nums">
+          {lastBackupWords(snapshot.meta.lastBackupAt, today).screen}
+        </p>
+        <p className="border-b border-line py-3.5">{storage}</p>
         <div className="mt-6 flex flex-wrap gap-2.5">
-          <button type="button" className={primary} onClick={exportNow}>
+          <button type="button" className={primary} onClick={exportNow} disabled={exporting}>
             Export backup
           </button>
-          <label className={`${secondary} inline-flex cursor-pointer items-center has-focus-visible:outline-2 has-focus-visible:outline-ink`}>
+          {/* A label, so a tap opens the Files picker itself (research: iOS storage durability §7c) */}
+          <label
+            className={`${secondary} inline-flex cursor-pointer items-center has-focus-visible:outline-2 has-focus-visible:outline-ink`}
+          >
             Import a backup
             <input type="file" className="sr-only" onChange={pick} />
           </label>
@@ -129,7 +146,7 @@ export function Backup({ back, onBack }: Props) {
           <h2 className="font-semibold">Replace everything with this backup?</h2>
           <p className="mt-1 text-given tabular-nums">{previewLine(preview)}</p>
           <div className="mt-5 flex flex-col gap-2.5">
-            <button type="button" className={secondary} onClick={exportNow}>
+            <button type="button" className={secondary} onClick={exportNow} disabled={exporting}>
               Export what's here first
             </button>
             <button type="button" className={primary} onClick={() => replace(preview)}>

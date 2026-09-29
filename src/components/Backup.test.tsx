@@ -5,7 +5,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
 import { open, type QuestContent } from '../lib/store'
-import { aMomentLater, pretendNoShareSheet, pretendOpened, pretendShareSheet, pretendStorage } from '../test/phone'
+import { aMomentLater, flakyPhone, pretendNoShareSheet, pretendOpened, pretendShareSheet, pretendStorage } from '../test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-11-12T10:00" */
@@ -31,8 +31,8 @@ async function setUpQ4() {
 }
 
 /** Opens Cadence as the phone would: the real app over the real store */
-async function launch() {
-  return render(<App store={await open(() => now)} />)
+async function launch(connect?: Parameters<typeof open>[1]) {
+  return render(<App store={await open(() => now, connect)} />)
 }
 
 /** Opens the menu on Today, then the Backup screen from it */
@@ -193,6 +193,21 @@ describe('Import', () => {
     expect(await screen.findByText('Last backup: Mon 12 Oct, 31 days ago')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(await workOnToday(user)).toBe('ship the onboarding flow by November')
+  })
+
+  it('says when the replace could not be saved, and keeps everything as it was', async () => {
+    const phone = flakyPhone()
+    await launch(phone.connect)
+    const user = await openBackup()
+    const preview = await pickBackup(user)
+    phone.failNextWrites('QuotaExceededError')
+    await user.click(preview.getByRole('button', { name: 'Replace everything' }))
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent("Couldn't save: iPhone storage is full.")
+    await user.click(screen.getByRole('button', { name: 'OK' }))
+    await user.click(preview.getByRole('button', { name: "Keep what's here" }))
+    expect(screen.getByText('No backup yet')).toBeInTheDocument()
+    expect(await workOnToday(user)).toBe(work.mainQuest)
   })
 
   it("exports what's here first, then comes back to the choice", async () => {
