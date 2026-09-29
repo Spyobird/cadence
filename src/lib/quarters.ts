@@ -22,6 +22,12 @@ export function quarterOf(date: LocalDate): Quarter {
   return `${year}-Q${Math.ceil(month / 3) as 1 | 2 | 3 | 4}`
 }
 
+/** "Q4 2026" */
+export function labelOf(quarter: Quarter): string {
+  const [year, q] = quarter.split('-')
+  return `${q} ${year}`
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 /** Days since 1970-01-01, counted on the calendar alone, so daylight saving never shifts a Day */

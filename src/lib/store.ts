@@ -3,7 +3,7 @@
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
 import type { Appearance } from './appearance'
-import { type LocalDate, localDate, type Quarter } from './quarters'
+import { labelOf, type LocalDate, localDate, type Quarter, quarterOf } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
 const SCHEMA_VERSION = 1
@@ -74,6 +74,46 @@ export interface Store {
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
 }
 
+/** Why the store refused a write */
+export type Refusal = 'incomplete' | 'quarter-ended'
+
+/** A write that didn't happen. Nothing was saved, and `message` says why in words the UI can show. */
+export class StoreError extends Error {
+  readonly reason: Refusal
+
+  constructor(reason: Refusal, message: string) {
+    super(message)
+    this.name = 'StoreError'
+    this.reason = reason
+  }
+}
+
+/** A list holds at most five items (spec §4.1) */
+const MAX_ITEMS = 5
+
+/** One line of prose: trimmed, with a pasted line break made a space (spec §4.3) */
+const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ').trim()
+const tidyList = (items: string[]) => items.map(oneLine).filter(Boolean)
+
+/** A Quest as it's saved: every part and list item on one tidy line, and no empty list items */
+function tidyQuest(content: QuestContent): QuestContent {
+  return {
+    mainQuest: oneLine(content.mainQuest),
+    whyItMatters: oneLine(content.whyItMatters),
+    successMetrics: tidyList(content.successMetrics),
+    whyItsExciting: oneLine(content.whyItsExciting),
+    obstacle: oneLine(content.obstacle),
+    commitments: tidyList(content.commitments),
+  }
+}
+
+/** Every required part written, and one to five items in each list; only the Obstacle may be empty */
+function isComplete(content: QuestContent): boolean {
+  const { mainQuest, whyItMatters, whyItsExciting, successMetrics, commitments } = content
+  const listOk = (items: string[]) => items.length >= 1 && items.length <= MAX_ITEMS
+  return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
+}
+
 /** A change to one key: the value to put, or undefined to delete it */
 type Change = [key: string, value: unknown]
 
@@ -121,6 +161,13 @@ export async function open(clock: () => Date, connect = () => createStore('caden
   const listeners = new Set<() => void>()
   const today = () => localDate(clock())
 
+  /** A Past Quarter's key is never written again, and its Drafts are frozen with it (spec §13.4) */
+  function refuseIfEnded(quarter: Quarter) {
+    if (quarter < quarterOf(today())) {
+      throw new StoreError('quarter-ended', `${labelOf(quarter)} ended at midnight, so this can't be saved.`)
+    }
+  }
+
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
   async function commit(changes: Change[], next: Snapshot) {
     await transact(kv, changes)
@@ -135,12 +182,18 @@ export async function open(clock: () => Date, connect = () => createStore('caden
       return () => listeners.delete(listener)
     },
     async saveSetupDraft(quarter, draft) {
+      refuseIfEnded(quarter)
       await commit([[`setup:${quarter}`, draft]], {
         ...snapshot,
         setupDrafts: withEntry(snapshot.setupDrafts, quarter, draft),
       })
     },
-    async finishQuest(quarter, quest, content) {
+    async finishQuest(quarter, quest, typed) {
+      refuseIfEnded(quarter)
+      const content = tidyQuest(typed)
+      if (!isComplete(content)) {
+        throw new StoreError('incomplete', 'Only a complete Quest can be finished: every part but the Obstacle written, and one to five items in each list.')
+      }
       const record = snapshot.quarters[quarter] ?? { versions: { work: [], life: [] }, reflections: {} }
       const finished: QuarterRecord = {
         ...record,
