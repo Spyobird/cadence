@@ -1,6 +1,8 @@
 // Pure date maths for Quarters and Days (spec §3). Dates are the phone's local calendar dates, written
 // "2026-11-12"; no time zone is stored.
 
+import type { Snapshot } from './store'
+
 /** A local calendar date, like "2026-11-12" */
 export type LocalDate = string
 
@@ -48,4 +50,40 @@ export function setupTarget(today: LocalDate): Quarter {
   const current = quarterOf(today)
   const daysLeft = lengthOf(current) - (dayOf(today, current) as number)
   return daysLeft < LAST_DAYS ? nextQuarter(current) : current
+}
+
+/** Which screen Cadence opens on (spec §3.1) */
+export type Screen =
+  /** Today for the Current Quarter */
+  | { name: 'running'; quarter: Quarter }
+  /** Today for the Upcoming Quarter: "Starts in N days" */
+  | { name: 'before-day-1'; quarter: Quarter }
+  /** Setup, where its Draft was left */
+  | { name: 'resume'; quarter: Quarter }
+  /** Today for the latest set-up Quarter, read-only, with a button to set up `next` */
+  | { name: 'ended'; quarter: Quarter; next: Quarter }
+  /** A blank setup */
+  | { name: 'setup'; quarter: Quarter }
+
+/** Applies the rules of spec §3.1 in order; the first that matches wins */
+export function screenFor(snapshot: Snapshot, today: LocalDate): Screen {
+  const current = quarterOf(today)
+  const upcoming = nextQuarter(current)
+  const setUp = (quarter: Quarter) => {
+    const versions = snapshot.quarters[quarter]?.versions
+    return !!versions && versions.work.length > 0 && versions.life.length > 0
+  }
+
+  if (setUp(current)) return { name: 'running', quarter: current }
+  if (setUp(upcoming)) return { name: 'before-day-1', quarter: upcoming }
+  // A Draft for a Past Quarter is frozen, so only these two can resume
+  const draft = [current, upcoming].find((quarter) => snapshot.setupDrafts[quarter])
+  if (draft) return { name: 'resume', quarter: draft }
+  const latest = (Object.keys(snapshot.quarters) as Quarter[])
+    .filter((quarter) => quarter < current && setUp(quarter))
+    .sort()
+    .at(-1)
+  // The button aims where a blank setup would (§3.2): the Current Quarter, unless it's in its last 14 days
+  if (latest) return { name: 'ended', quarter: latest, next: setupTarget(today) }
+  return { name: 'setup', quarter: setupTarget(today) }
 }
