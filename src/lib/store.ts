@@ -69,6 +69,8 @@ export interface Store {
   snapshot(): Snapshot
   /** Calls `listener` after every write; returns the unsubscribe */
   subscribe(listener: () => void): () => void
+  /** The phone's local date, by the clock the store was opened with */
+  today(): LocalDate
   /** Keeps setup's words as typed, and where it was left (spec §5.4) */
   saveSetupDraft(quarter: Quarter, draft: SetupDraft): Promise<void>
   /** Moves setup, and its words, to the other of the Current and Upcoming Quarters, until Work is finished (spec §3.2) */
@@ -306,6 +308,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   return {
     snapshot: () => snapshot,
+    today,
     subscribe(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
