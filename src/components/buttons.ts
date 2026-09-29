@@ -12,3 +12,6 @@ export const nav = 'min-h-11 px-1.5 text-gold-text disabled:text-faint'
 
 /** A plain text button, like Back */
 export const plain = 'min-h-12 px-1.5 text-ink disabled:text-faint'
+
+/** A small pill in a sheet's row, like the menu's Edit and History */
+export const chip = 'min-h-11 rounded-full bg-raise px-3.5 font-semibold text-ink'

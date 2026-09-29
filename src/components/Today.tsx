@@ -21,6 +21,8 @@ interface DayWords {
   reflectionsNote?: string
   /** Today is a Day of the Quarter, so its Reflections can be written (§7.1) */
   canReflect: boolean
+  /** The Quarter hasn't ended, so its Quests can be edited (§6.4) */
+  canEdit: boolean
   ring: RingFace
 }
 
@@ -34,6 +36,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
         dateLine: weekdayDate(today),
         summary: `Day ${day} of ${length}, ${daysLeft} to go`,
         canReflect: true,
+        canEdit: true,
         ring: { passed: day - 1, today: day, numeral: day, caption: `of ${length}`, label: `Day ${day} of ${length}` },
       }
     }
@@ -46,6 +49,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
         summary: `Starts in ${daysToGo} ${days}`,
         reflectionsNote: `Reflections start on Day 1, ${dayOne}.`,
         canReflect: false,
+        canEdit: true,
         // The ring is empty, and counts the days to go
         ring: { passed: 0, numeral: daysToGo, caption: `${days} to go`, label: `${daysToGo} ${days} to go` },
       }
@@ -56,6 +60,7 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
         dateLine: weekdayDate(today),
         summary: `Ended ${weekdayDate(lastDayOf(quarter))}`,
         canReflect: false,
+        canEdit: false,
         ring: { passed: length, numeral: length, caption: 'ended', label: `${labelOf(quarter)} has ended` },
       }
   }
@@ -63,13 +68,17 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
 
 interface Props {
   quarter: Quarter
+  /** The menu's Edit on a Quest */
+  onEdit: (quest: Quest) => void
+  /** The menu's History on a Quest */
+  onHistory: (quest: Quest) => void
   /** The menu's Backup row */
   onBackup: () => void
   /** A Reflection popup opens or closes */
   onReflecting: (open: boolean) => void
 }
 
-export function Today({ quarter, onBackup, onReflecting }: Props) {
+export function Today({ quarter, onEdit, onHistory, onBackup, onReflecting }: Props) {
   const { today } = useCadence()
   const words = wordsFor(quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -105,7 +114,10 @@ export function Today({ quarter, onBackup, onReflecting }: Props) {
         <Menu
           quarter={quarter}
           summary={words.summary}
+          canEdit={words.canEdit}
           onClose={closeMenu}
+          onEdit={onEdit}
+          onHistory={onHistory}
           onBackup={onBackup}
           onFailure={(error) => setFailure(failureOf(error))}
         />

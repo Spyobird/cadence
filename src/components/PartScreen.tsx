@@ -22,6 +22,11 @@ interface Props {
   onBack?: () => void
   /** Done, when the part was opened from the read-back */
   nextLabel: 'Next' | 'Done'
+  /**
+   * In Edit, Done always returns to the read-back, where Save says what's missing: there's no Back, and no "Skip for
+   * now" (spec §8)
+   */
+  editing?: boolean
   /** Reached by a tap, so it slides in; motion only ever answers a tap */
   slideIn: boolean
   /** What sits above the part, and scrolls with it */
@@ -31,12 +36,13 @@ interface Props {
 }
 
 export function PartScreen(props: Props) {
-  const { quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn, head, foot } = props
+  const { quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, editing, slideIn, head, foot } = props
   const openingId = useId()
   const { opening, placeholder, hint, item } = SCAFFOLD[part]
   const written = isPartWritten(draft, part)
+  const canGo = written || !!editing
   // Skipping the Obstacle is a deliberate tap, in Next's place while it's empty (spec §4.1)
-  const skip = part === 'obstacle' && !written
+  const skip = part === 'obstacle' && !canGo
 
   return (
     <>
@@ -58,7 +64,7 @@ export function PartScreen(props: Props) {
             <PartLine
               value={draft[part] ?? ''}
               onChange={(value) => onChange({ ...draft, [part]: value })}
-              onEnter={() => written && onNext(draft)}
+              onEnter={() => canGo && onNext(draft)}
               placeholder={placeholder}
               labelledBy={openingId}
             />
@@ -73,15 +79,19 @@ export function PartScreen(props: Props) {
         </div>
       </Words>
       <Bar>
-        <button type="button" className={plain} {...keepsFocus} onClick={onBack} disabled={!onBack}>
-          Back
-        </button>
+        {editing ? (
+          <span />
+        ) : (
+          <button type="button" className={plain} {...keepsFocus} onClick={onBack} disabled={!onBack}>
+            Back
+          </button>
+        )}
         {skip ? (
           <button type="button" className={secondary} {...keepsFocus} onClick={() => onNext({ ...draft, obstacle: '' })}>
             Skip for now
           </button>
         ) : (
-          <button type="button" className={primary} {...keepsFocus} onClick={() => onNext(draft)} disabled={!written}>
+          <button type="button" className={primary} {...keepsFocus} onClick={() => onNext(draft)} disabled={!canGo}>
             {nextLabel}
           </button>
         )}

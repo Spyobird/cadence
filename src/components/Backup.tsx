@@ -9,9 +9,10 @@ import { saveFile } from '../lib/share'
 import type { Preview } from '../lib/store'
 import { Banners } from './Banners'
 import { lastBackupWords } from './backupWords'
-import { nav, plain, primary, secondary } from './buttons'
+import { plain, primary, secondary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { SAFARI_TAB_RISK } from './SafariBanner'
+import { BackButton, ScreenHeader } from './ScreenHeader'
 import { Sheet } from './Sheet'
 
 /** "Backup from Mon 12 Oct 2026 · Q4 2026 · 43 Reflections", with every Quarter it holds (spec §12.3) */
@@ -91,19 +92,7 @@ export function Backup({ back, onBack }: Props) {
   return (
     <>
       <Banners />
-      <header className="sticky top-0 z-10 bg-void pt-safe">
-        <div className="mx-auto grid max-w-[600px] grid-cols-[6em_1fr_6em] items-center px-gutter">
-          <button type="button" className={`${nav} flex items-center gap-1 justify-self-start`} onClick={onBack}>
-            {back === 'Today' && (
-              <svg aria-hidden viewBox="0 0 16 16" className="size-4 fill-none stroke-current stroke-2" strokeLinecap="round">
-                <path d="M10 3.5 5.5 8l4.5 4.5" />
-              </svg>
-            )}
-            {back}
-          </button>
-          <h1 className="text-center font-semibold">Backup</h1>
-        </div>
-      </header>
+      <ScreenHeader left={<BackButton to={back} chevron={back === 'Today'} onClick={onBack} />} title="Backup" />
       <main className="mx-auto max-w-[600px] px-gutter pb-safe">
         <p className="border-b border-line py-3.5 tabular-nums">
           {lastBackupWords(snapshot.meta.lastBackupAt, today).screen}

@@ -3,9 +3,10 @@
 import type { Ref } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { labelOf, type Quarter } from '../lib/quarters'
-import { NAMES, QUESTS } from '../lib/store'
+import { NAMES, type Quest, QUESTS } from '../lib/store'
 import { AppearanceSwitch } from './AppearanceSwitch'
 import { lastBackupWords } from './backupWords'
+import { chip } from './buttons'
 import { Sheet } from './Sheet'
 
 export function MenuButton({ ref, onOpen }: { ref: Ref<HTMLButtonElement>; onOpen: () => void }) {
@@ -32,23 +33,42 @@ interface Props {
   quarter: Quarter
   /** "Day 43 of 92, 49 to go", or "Starts in 2 days" before Day 1 */
   summary: string
+  /** The Quarter hasn't ended, so its Quests can be edited (spec §6.4) */
+  canEdit: boolean
   onClose: () => void
+  onEdit: (quest: Quest) => void
+  onHistory: (quest: Quest) => void
   /** The Backup row */
   onBackup: () => void
   /** A save from the menu didn't happen */
   onFailure: (error: unknown) => void
 }
 
-export function Menu({ quarter, summary, onClose, onBackup, onFailure }: Props) {
+export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, onBackup, onFailure }: Props) {
   const { snapshot, today, backupDue } = useCadence()
   return (
     <Sheet label="Menu" onClose={onClose}>
       <p className="font-semibold">{labelOf(quarter)}</p>
       <p className="mb-2.5 text-s text-faint tabular-nums">{summary}</p>
-      {/* Each Quest's Edit and History buttons arrive in slice 7 */}
       {QUESTS.map((quest) => (
-        <div key={quest} className="flex min-h-14 items-center border-t border-line">
-          {NAMES[quest]} Quest
+        <div
+          key={quest}
+          role="group"
+          aria-label={`${NAMES[quest]} Quest`}
+          className="flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-line py-1.5"
+        >
+          <span>{NAMES[quest]} Quest</span>
+          <span className="flex gap-1.5">
+            {/* Data from a newer Cadence can't be changed (spec §13.4) */}
+            {canEdit && !snapshot.readOnly && (
+              <button type="button" className={chip} onClick={() => onEdit(quest)}>
+                {snapshot.editDrafts[quarter]?.[quest] ? 'Edit · unsaved changes' : 'Edit'}
+              </button>
+            )}
+            <button type="button" className={chip} onClick={() => onHistory(quest)}>
+              History
+            </button>
+          </span>
         </div>
       ))}
       <button
