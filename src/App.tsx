@@ -36,6 +36,8 @@ function Screens() {
     return <Backup back={inSetup ? 'Close' : 'Today'} onBack={leave} />
   }
   // Setup places the banners itself, inside the screen it fits to the keyboard
-  if (inSetup) return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} />
+  if (inSetup) {
+    return <Setup quarter={screen.quarter} onToday={() => setInSetup(false)} onRestore={() => setBackupOpen(true)} />
+  }
   return <Today quarter={screen.quarter} onBackup={() => setBackupOpen(true)} />
 }

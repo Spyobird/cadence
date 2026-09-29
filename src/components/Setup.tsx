@@ -38,9 +38,11 @@ interface Props {
   quarter: Quarter
   /** From "Q4 2026 is set up" */
   onToday: () => void
+  /** "Restore from a backup", on a phone with nothing stored */
+  onRestore: () => void
 }
 
-export function Setup({ quarter: opened, onToday }: Props) {
+export function Setup({ quarter: opened, onToday, onRestore }: Props) {
   const { snapshot, today, saveSetupDraft, switchSetupTarget, finishQuest } = useCadence()
   const [quarter, setQuarter] = useState(opened)
   // The words on screen, which every change saves as typed (spec §5.4)
@@ -122,6 +124,9 @@ export function Setup({ quarter: opened, onToday }: Props) {
       showFailure(error)
     })
   }
+
+  // A fresh install, perhaps after the icon was deleted, has no menu: this is its way to the Backup screen
+  const nothingStored = Object.keys(snapshot.quarters).length + Object.keys(snapshot.setupDrafts).length === 0
 
   const content: QuestContent = { ...EMPTY, ...questDraft }
   const canFinish = isComplete(tidyQuest(content)) && !finishing
@@ -214,6 +219,17 @@ export function Setup({ quarter: opened, onToday }: Props) {
           nextLabel={fromReadBack ? 'Done' : 'Next'}
           slideIn={moved}
           head={head}
+          foot={
+            nothingStored && (
+              <button
+                type="button"
+                className="mt-2 min-h-11 text-left text-m text-faint underline decoration-line underline-offset-4"
+                onClick={onRestore}
+              >
+                Restore from a backup
+              </button>
+            )
+          }
         />
       )}
       {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}

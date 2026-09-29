@@ -263,3 +263,44 @@ describe('a backup due (spec §6.3)', () => {
     expect(row).toHaveTextContent(/^BackupToday$/)
   })
 })
+
+describe('restoring onto a fresh install', () => {
+  // The icon was deleted and added again: nothing is stored
+  beforeEach(() => {
+    indexedDB = new IDBFactory()
+  })
+
+  const restoreLink = () => screen.queryByRole('button', { name: 'Restore from a backup' })
+
+  it('offers "Restore from a backup" on the first setup screen, which imports it and opens on Today', async () => {
+    const user = userEvent.setup()
+    await launch()
+    expect(screen.getByText('Work Quest, part 1 of 6')).toBeInTheDocument()
+    await user.click(restoreLink()!)
+
+    await user.upload(screen.getByLabelText('Import a backup'), backupFrom12Oct())
+    const preview = within(await screen.findByRole('dialog', { name: 'Replace everything with this backup?' }))
+    await user.click(preview.getByRole('button', { name: 'Replace everything' }))
+    await screen.findByText('Last backup: Mon 12 Oct, 31 days ago')
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    const workPage = within(screen.getByRole('tabpanel', { name: 'Work' }))
+    expect(workPage.getByRole('heading', { level: 2 })).toHaveTextContent('ship the onboarding flow by November')
+  })
+
+  it('closes back to setup, as it was', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(restoreLink()!)
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.getByRole('textbox', { name: 'My Work Main Quest is to' })).toHaveValue('')
+  })
+
+  it('goes once anything is typed', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
+    await aMomentLater()
+    expect(restoreLink()).not.toBeInTheDocument()
+  })
+})

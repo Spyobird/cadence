@@ -26,9 +26,12 @@ interface Props {
   slideIn: boolean
   /** What sits above the part, and scrolls with it */
   head: ReactNode
+  /** What sits under the part */
+  foot?: ReactNode
 }
 
-export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn, head }: Props) {
+export function PartScreen(props: Props) {
+  const { quest, quarter, part, draft, onChange, onNext, onBack, nextLabel, slideIn, head, foot } = props
   const openingId = useId()
   const { opening, placeholder, hint, item } = SCAFFOLD[part]
   const written = isPartWritten(draft, part)
@@ -66,6 +69,7 @@ export function PartScreen({ quest, quarter, part, draft, onChange, onNext, onBa
               .map((piece, i) => (i % 2 ? <em key={i}>{piece}</em> : piece))}
           </p>
           {part === 'mainQuest' && <Stuck quest={quest} quarter={quarter} />}
+          {foot}
         </div>
       </Words>
       <Bar>
