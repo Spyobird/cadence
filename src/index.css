@@ -46,6 +46,8 @@
 
   --font-sans: -apple-system, system-ui, sans-serif;
   --font-serif: ui-serif, 'New York', Georgia, serif;
+  /* The Main Quest on Today, bundled and precached (main.tsx) */
+  --font-quest: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
 
   /* Three sizes (DESIGN.md) */
   --text-*: initial;
@@ -55,6 +57,12 @@
   --text-m--line-height: 24px;
   --text-l: 28px;
   --text-l--line-height: 34px;
+  /* The ring's numeral, its own size (DESIGN.md) */
+  --text-numeral: 48px;
+  --text-numeral--line-height: 1;
+
+  /* One easing for every transition (DESIGN.md) */
+  --default-transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* A 22 px side gutter, or the safe-area inset if that's larger */
@@ -105,10 +113,16 @@ body {
   padding-bottom: 8px;
 }
 
-/* A setup step slides in, only in answer to a tap (DESIGN.md) */
+/* Only in answer to a tap (DESIGN.md): a setup step slides in, and a sheet rises over a fading scrim */
 @media (prefers-reduced-motion: no-preference) {
   .step-in {
     animation: step-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .sheet-in {
+    animation: sheet-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .fade-in {
+    animation: fade-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 @keyframes step-in {
@@ -116,4 +130,20 @@ body {
     opacity: 0;
     transform: translateX(14px);
   }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(60px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The page behind a sheet or a blocking message stays put */
+:root:has([aria-modal='true']) {
+  overflow: hidden;
 }

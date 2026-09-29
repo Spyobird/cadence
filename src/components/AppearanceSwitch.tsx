@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { applyAppearance, type Appearance } from '../lib/appearance'
+import { useCadence } from '../hooks/useCadence'
+import type { Appearance } from '../lib/appearance'
 
 const CHOICES: { value: Appearance; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -7,18 +7,13 @@ const CHOICES: { value: Appearance; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ]
 
-// Temporary, for phone check step 5 (spec §15.2). Not stored. Removed in slice 4, when Appearance moves to the menu.
-export function AppearanceSwitch() {
-  const [appearance, setAppearance] = useState<Appearance>('system')
-
-  function choose(next: Appearance) {
-    setAppearance(next)
-    applyAppearance(next)
-  }
+/** System, Light or Dark, kept in meta (spec §2.8). The app shell applies it once it's saved. */
+export function AppearanceSwitch({ onFailure }: { onFailure: (error: unknown) => void }) {
+  const { snapshot, setAppearance } = useCadence()
 
   return (
     <fieldset>
-      <legend className="text-s text-faint mb-2">Appearance</legend>
+      <legend className="mb-2 text-s text-faint">Appearance</legend>
       <div className="flex rounded-full bg-raise p-1">
         {CHOICES.map(({ value, label }) => (
           <label
@@ -29,8 +24,8 @@ export function AppearanceSwitch() {
               type="radio"
               name="appearance"
               value={value}
-              checked={appearance === value}
-              onChange={() => choose(value)}
+              checked={snapshot.meta.appearance === value}
+              onChange={() => setAppearance(value).catch(onFailure)}
               className="sr-only"
             />
             {label}

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { readFileSync } from 'node:fs'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
 import { createStore, set } from 'idb-keyval'
@@ -55,50 +55,108 @@ describe('the Safari-tab banner', () => {
   })
 })
 
-describe('the Appearance switch', () => {
-  // The real head from index.html, which the switch rewrites
-  beforeEach(() => {
-    const html = readFileSync('index.html', 'utf8')
-    document.head.innerHTML = new DOMParser().parseFromString(html, 'text/html').head.innerHTML
+describe('Appearance', () => {
+  const html = new DOMParser().parseFromString(readFileSync('index.html', 'utf8'), 'text/html')
+
+  /** A fresh page: index.html's head, before any script has run */
+  function freshPage() {
+    document.head.innerHTML = html.head.innerHTML
     document.documentElement.removeAttribute('data-look')
+  }
+
+  /** Runs index.html's inline script, as the phone does before first paint */
+  function beforeFirstPaint() {
+    const script = [...html.head.querySelectorAll('script')].find((each) => !each.src)
+    new Function(script!.textContent)()
+  }
+
+  beforeEach(() => {
+    freshPage()
+    localStorage.clear()
     pretendOpened('home screen (iOS)')
   })
 
   const themeColors = () =>
     Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'), (m) => [m.getAttribute('media'), m.content])
+  const phoneColors = [
+    ['(prefers-color-scheme: light)', '#F4F5F7'],
+    ['(prefers-color-scheme: dark)', '#0F1113'],
+  ]
+
+  async function choose(appearance: 'System' | 'Light' | 'Dark') {
+    const user = userEvent.setup()
+    if (!screen.queryByRole('dialog', { name: 'Menu' })) await user.click(screen.getByRole('button', { name: 'Menu' }))
+    await user.click(screen.getByRole('radio', { name: appearance }))
+    await aMomentLater()
+  }
 
   it('starts on System, following the phone', async () => {
     await launchSetUp()
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
     expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
-    expect(themeColors()).toEqual([
-      ['(prefers-color-scheme: light)', '#F4F5F7'],
-      ['(prefers-color-scheme: dark)', '#0F1113'],
-    ])
+    expect(themeColors()).toEqual(phoneColors)
   })
 
   it('Light sets the light look and its status bar colour', async () => {
     await launchSetUp()
-    await userEvent.click(screen.getByRole('radio', { name: 'Light' }))
+    await choose('Light')
+    expect(screen.getByRole('radio', { name: 'Light' })).toBeChecked()
     expect(document.documentElement).toHaveAttribute('data-look', 'light')
     expect(themeColors().map(([, colour]) => colour)).toEqual(['#F4F5F7', '#F4F5F7'])
   })
 
   it('Dark sets the dark look and its status bar colour', async () => {
     await launchSetUp()
-    await userEvent.click(screen.getByRole('radio', { name: 'Dark' }))
+    await choose('Dark')
     expect(document.documentElement).toHaveAttribute('data-look', 'dark')
     expect(themeColors().map(([, colour]) => colour)).toEqual(['#0F1113', '#0F1113'])
   })
 
   it('System hands the look back to the phone', async () => {
     await launchSetUp()
-    await userEvent.click(screen.getByRole('radio', { name: 'Dark' }))
-    await userEvent.click(screen.getByRole('radio', { name: 'System' }))
+    await choose('Dark')
+    await choose('System')
     expect(document.documentElement).toHaveAttribute('data-look', 'system')
-    expect(themeColors()).toEqual([
-      ['(prefers-color-scheme: light)', '#F4F5F7'],
-      ['(prefers-color-scheme: dark)', '#0F1113'],
-    ])
+    expect(themeColors()).toEqual(phoneColors)
+  })
+
+  it('persists across a reload', async () => {
+    await launchSetUp()
+    await choose('Dark')
+    cleanup()
+    freshPage()
+
+    render(<App store={await open(clock)} />)
+    expect(document.documentElement).toHaveAttribute('data-look', 'dark')
+    expect(themeColors().map(([, colour]) => colour)).toEqual(['#0F1113', '#0F1113'])
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }))
+    expect(screen.getByRole('radio', { name: 'Dark' })).toBeChecked()
+  })
+
+  it('is applied before first paint on the next launch, so it never flashes the phone\'s look (spec §2.8)', async () => {
+    await launchSetUp()
+    await choose('Light')
+    cleanup()
+    freshPage()
+
+    beforeFirstPaint()
+    expect(document.documentElement).toHaveAttribute('data-look', 'light')
+    expect(document.querySelector('meta[name="color-scheme"]')).toHaveAttribute('content', 'light')
+    expect(themeColors().map(([, colour]) => colour)).toEqual(['#F4F5F7', '#F4F5F7'])
+  })
+
+  it('leaves the first paint to the phone on System, or on a first launch', async () => {
+    beforeFirstPaint()
+    expect(document.documentElement).not.toHaveAttribute('data-look')
+    expect(themeColors()).toEqual(phoneColors)
+
+    await launchSetUp()
+    await choose('Dark')
+    await choose('System')
+    cleanup()
+    freshPage()
+    beforeFirstPaint()
+    expect(themeColors()).toEqual(phoneColors)
   })
 })
 

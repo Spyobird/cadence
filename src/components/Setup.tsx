@@ -14,14 +14,13 @@ import {
   type QuestContent,
   type QuestDraft,
   type SetupDraft,
-  StoreError,
   switchTargetFrom,
   tidyQuest,
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { Banners } from './Banners'
 import { plain, primary } from './buttons'
-import { FailedSave } from './FailedSave'
+import { FailedSave, failureOf } from './FailedSave'
 import { Bar, PartScreen, Words } from './PartScreen'
 import { ReadBack } from './ReadBack'
 
@@ -76,11 +75,7 @@ export function Setup({ quarter: opened, onToday }: Props) {
     return () => setWriting(false)
   }, [setUp])
 
-  function showFailure(error: unknown) {
-    if (!(error instanceof StoreError)) throw error
-    // The newer-data banner already says why nothing saves
-    if (error.reason !== 'read-only') setFailure(error.message)
-  }
+  const showFailure = (error: unknown) => setFailure(failureOf(error))
 
   const { quest, part } = draft.at
   const questDraft = draft[quest]

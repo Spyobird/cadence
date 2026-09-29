@@ -5,6 +5,8 @@ import { LaunchFailed } from './components/LaunchFailed'
 import { askToPersist } from './lib/launch'
 import { open } from './lib/store'
 import { keepUpToDate } from './lib/updates'
+// The Main Quest's face on Today: Plus Jakarta Sans 800, bundled and precached so it works offline (DESIGN.md)
+import '@fontsource/plus-jakarta-sans/latin-800.css'
 import './index.css'
 
 keepUpToDate()
