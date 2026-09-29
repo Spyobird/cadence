@@ -38,3 +38,17 @@ A minimal, local-first PWA for one iPhone: each Quarter the owner writes a Work 
 - **The real thing:** push to `main`, wait for the deploy, and open `https://spyobird.github.io/cadence/` on the iPhone.
 - **A local build:** `npm run build && npm run preview` serves `http://localhost:4173/cadence/`. A service worker and install need HTTPS, so tunnel it for the phone (`npx ngrok http 4173`).
 - **Real data lives only in the installed app.** Test in a Safari tab or a tunnel freely; never delete the Home Screen icon without a fresh Backup.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown under `.scratch/<feature>/`: build tickets in `build/`, questions in `issues/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles, written on a ticket's `Status:` line. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the root. See `docs/agents/domain.md`.
