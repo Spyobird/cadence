@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayOf, lengthOf, type Quarter, quarterOf, screenFor, setupTarget } from './quarters'
+import { dayOf, endOf, lengthOf, type Quarter, quarterOf, screenFor, setupTarget, spanOf } from './quarters'
 import type { QuestContent, Snapshot } from './store'
 
 describe('quarterOf', () => {
@@ -27,6 +27,18 @@ describe('lengthOf', () => {
     ['2026-Q3', 92],
   ] as const)('%s is %i days', (quarter, days) => {
     expect(lengthOf(quarter)).toBe(days)
+  })
+})
+
+describe('spanOf and endOf', () => {
+  it.each([
+    ['2027-Q1', '1 Jan – 31 Mar', '31 March 2027'],
+    ['2026-Q2', '1 Apr – 30 Jun', '30 June 2026'],
+    ['2026-Q3', '1 Jul – 30 Sep', '30 September 2026'],
+    ['2026-Q4', '1 Oct – 31 Dec', '31 December 2026'],
+  ] as const)('%s runs %s, and ends on %s', (quarter, span, end) => {
+    expect(spanOf(quarter)).toBe(span)
+    expect(endOf(quarter)).toBe(end)
   })
 })
 

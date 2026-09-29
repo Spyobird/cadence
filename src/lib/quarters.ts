@@ -35,6 +35,41 @@ export function isPast(quarter: Quarter, today: LocalDate): boolean {
   return quarter < quarterOf(today)
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const
+
+/** A Quarter's first and last month, and the last month's last day: every Quarter ends on the same date each year */
+function monthsOf(quarter: Quarter) {
+  const [year, q] = yearAndNumber(quarter)
+  const first = MONTHS[q * 3 - 3]!
+  const last = MONTHS[q * 3 - 1]!
+  return { year, first, last, lastDay: q === 1 || q === 4 ? 31 : 30 }
+}
+
+/** "1 Oct – 31 Dec", as the top of setup names the target (spec §3.2) */
+export function spanOf(quarter: Quarter): string {
+  const { first, last, lastDay } = monthsOf(quarter)
+  return `1 ${first.slice(0, 3)} – ${lastDay} ${last.slice(0, 3)}`
+}
+
+/** "31 December 2026": the Scaffold's {end} (spec §4.1) */
+export function endOf(quarter: Quarter): string {
+  const { year, last, lastDay } = monthsOf(quarter)
+  return `${lastDay} ${last} ${year}`
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 /** Days since 1970-01-01, counted on the calendar alone, so daylight saving never shifts a Day */

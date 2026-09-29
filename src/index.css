@@ -80,3 +80,28 @@ body {
   line-height: var(--text-m--line-height);
   -webkit-text-size-adjust: 100%;
 }
+
+/* The bar above the keyboard (spec §5.1): it rides on the keyboard, and clears the home indicator when it's down */
+.keyboard-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--kb, 0px);
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+:root[data-keyboard='up'] .keyboard-bar {
+  padding-bottom: 8px;
+}
+
+/* A setup step slides in, only in answer to a tap (DESIGN.md) */
+@media (prefers-reduced-motion: no-preference) {
+  .step-in {
+    animation: step-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}

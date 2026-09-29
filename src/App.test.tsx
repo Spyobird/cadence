@@ -1,26 +1,55 @@
+import 'fake-indexeddb/auto'
 import { readFileSync } from 'node:fs'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { IDBFactory } from 'fake-indexeddb'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from './App'
+import { open, type QuestContent } from './lib/store'
 import { pretendOpened } from './test/phone'
 
+const clock = () => new Date('2026-09-29T10:00')
+
+const quest: QuestContent = {
+  mainQuest: 'ship Cadence v1',
+  whyItMatters: 'it would prove I can finish what I start',
+  successMetrics: ['v1 installed on the phone'],
+  whyItsExciting: 'I will use it every day',
+  obstacle: '',
+  commitments: ['Build every Saturday morning'],
+}
+
+/** Opens Cadence on a fresh phone */
+const launch = async () => render(<App store={await open(clock)} />)
+
+/** Opens Cadence with Q4 2026 already set up */
+async function launchSetUp() {
+  const store = await open(clock)
+  await store.finishQuest('2026-Q4', 'work', quest)
+  await store.finishQuest('2026-Q4', 'life', quest)
+  return render(<App store={store} />)
+}
+
+beforeEach(() => {
+  indexedDB = new IDBFactory()
+})
+
 describe('the Safari-tab banner', () => {
-  it('shows in a Safari tab', () => {
+  it('shows in a Safari tab', async () => {
     pretendOpened('safari tab')
-    render(<App />)
+    await launch()
     expect(screen.getByRole('alert')).toHaveTextContent('Open Cadence from your Home Screen')
   })
 
-  it('stays hidden from the Home Screen on iOS', () => {
+  it('stays hidden from the Home Screen on iOS', async () => {
     pretendOpened('home screen (iOS)')
-    render(<App />)
+    await launch()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('stays hidden in any standalone display mode', () => {
+  it('stays hidden in any standalone display mode', async () => {
     pretendOpened('home screen (display-mode)')
-    render(<App />)
+    await launch()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 })
@@ -37,8 +66,8 @@ describe('the Appearance switch', () => {
   const themeColors = () =>
     Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'), (m) => [m.getAttribute('media'), m.content])
 
-  it('starts on System, following the phone', () => {
-    render(<App />)
+  it('starts on System, following the phone', async () => {
+    await launchSetUp()
     expect(screen.getByRole('radio', { name: 'System' })).toBeChecked()
     expect(themeColors()).toEqual([
       ['(prefers-color-scheme: light)', '#F4F5F7'],
@@ -47,21 +76,21 @@ describe('the Appearance switch', () => {
   })
 
   it('Light sets the light look and its status bar colour', async () => {
-    render(<App />)
+    await launchSetUp()
     await userEvent.click(screen.getByRole('radio', { name: 'Light' }))
     expect(document.documentElement).toHaveAttribute('data-look', 'light')
     expect(themeColors().map(([, colour]) => colour)).toEqual(['#F4F5F7', '#F4F5F7'])
   })
 
   it('Dark sets the dark look and its status bar colour', async () => {
-    render(<App />)
+    await launchSetUp()
     await userEvent.click(screen.getByRole('radio', { name: 'Dark' }))
     expect(document.documentElement).toHaveAttribute('data-look', 'dark')
     expect(themeColors().map(([, colour]) => colour)).toEqual(['#0F1113', '#0F1113'])
   })
 
   it('System hands the look back to the phone', async () => {
-    render(<App />)
+    await launchSetUp()
     await userEvent.click(screen.getByRole('radio', { name: 'Dark' }))
     await userEvent.click(screen.getByRole('radio', { name: 'System' }))
     expect(document.documentElement).toHaveAttribute('data-look', 'system')

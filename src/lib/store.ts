@@ -12,7 +12,8 @@ const SCHEMA_VERSION = 1
 export const QUESTS = ['work', 'life'] as const
 export type Quest = (typeof QUESTS)[number]
 
-const NAMES: Record<Quest, string> = { work: 'Work', life: 'Life' }
+/** "Work" and "Life", as the Quests are named */
+export const NAMES: Record<Quest, string> = { work: 'Work', life: 'Life' }
 
 export interface QuestContent {
   mainQuest: string
@@ -108,7 +109,7 @@ export class StoreError extends Error {
 }
 
 /** A list holds at most five items (spec §4.1) */
-const MAX_ITEMS = 5
+export const MAX_ITEMS = 5
 
 /** One line of prose: trimmed, with a pasted line break made a space (spec §4.3) */
 const oneLine = (text: string) => text.replace(/\s*[\r\n]+\s*/g, ' ').trim()
@@ -127,7 +128,7 @@ export function tidyQuest(content: QuestContent): QuestContent {
 }
 
 /** Every required part written, and one to five items in each list; only the Obstacle may be empty */
-function isComplete(content: QuestContent): boolean {
+export function isComplete(content: QuestContent): boolean {
   const { mainQuest, whyItMatters, whyItsExciting, successMetrics, commitments } = content
   const listOk = (items: string[]) => items.length >= 1 && items.length <= MAX_ITEMS
   return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
