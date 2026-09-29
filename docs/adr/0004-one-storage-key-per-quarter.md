@@ -1,6 +1,6 @@
 # One storage key per Quarter, and one module that owns every rule
 
-Cadence stores each Quarter under one `idb-keyval` key (`quarter:2026-Q4`) that holds both Quests' Versions and that Quarter's Reflections. Drafts and `meta` have keys of their own. `src/lib/store.ts` is the only code that touches IndexedDB, and it enforces every rule: no writes to a Past Quarter, one Version per Day, Reflections only for today, and only a complete Quest can be finished. A Past Quarter's key is then never written again, a change to one key is a single atomic `update()`, and an export is simply every key. The data is small (a few MB after years), so everything is read into memory at launch.
+Cadence stores each Quarter under one `idb-keyval` key (`quarter:2026-Q4`) that holds both Quests' Versions and that Quarter's Reflections. Drafts and `meta` have keys of their own. `src/lib/store.ts` is the only code that touches IndexedDB, and it enforces every rule: no writes to a Past Quarter, one Version per Day, Reflections only for today, and only a complete Quest can be finished. A Past Quarter's key is then never written again, every write is one atomic transaction worked out from memory (writes wait their turn in a queue), and an export is simply every key. The data is small (a few MB after years), so everything is read into memory at launch.
 
 ## Considered options
 

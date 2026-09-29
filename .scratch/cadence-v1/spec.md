@@ -435,7 +435,7 @@ One Version per Quest per Day ([ADR 0003](../../docs/adr/0003-one-version-per-qu
 - **The store:** `idb-keyval` 6.3 with a named store, `createStore('cadence', 'kv')`.
 - **One key per Quarter** holds both Quests' Versions and that Quarter's Reflections. Each Draft has its own key, and there's one `meta` key.
 - **Past Quarters:** a Past Quarter's key is never written again.
-- **Atomicity:** a change to one key uses `update()`, an atomic read-modify-write. A change to several keys (finishing a Quest also clears its Draft; an import) runs in one IndexedDB transaction through the store function `createStore` returns.
+- **Atomicity:** every write, whether to one key or several (finishing a Quest also clears its Draft; an import), runs in one IndexedDB transaction through the store function `createStore` returns. Its values are worked out from memory, which only the store changes. Writes wait their turn in a queue, so each one's rules see what the write before it saved.
 - **Reads:** everything is loaded into memory at launch. All reads come from memory.
 
 ### 13.2 Records

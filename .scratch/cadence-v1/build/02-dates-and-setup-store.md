@@ -40,7 +40,7 @@ Later slices add their own store operations: Backup in 05, Reflections in 06, ed
 
 ## Build notes
 
-- **Writes:** every write, to one key or several, is one transaction through `createStore`'s store function, with its values worked out from memory. Writes wait their turn in a queue, so each one's rules see the write before it. §13.1 and ADR 0004 say a one-key change uses `update()`. **Open for the owner:** amend that wording, or switch one-key writes to `update()`.
+- **Writes:** every write, to one key or several, is one transaction through `createStore`'s store function, with its values worked out from memory. Writes wait their turn in a queue, so each one's rules see the write before it. §13.1 and ADR 0004 said a one-key change used `update()`; the owner chose to change that wording to match.
 - **Ended:** the button sets up the Current Quarter, as §3.1 says, even in its last 14 days. The setup switch reaches the Upcoming Quarter from there.
 - **Finishing:** `finishQuest(quarter, quest, content)` finishes the words on screen, not the stored Draft.
 - **Tidy-up:** a setup Draft is stored as typed. The tidy-up applies when a Version is made. `tidyQuest` is exported for slice 7's "changed".
