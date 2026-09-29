@@ -1,5 +1,20 @@
-import { describe, expect, it } from 'vitest'
-import { dayOf, endOf, lengthOf, type Quarter, quarterOf, screenFor, setupTarget, spanOf } from './quarters'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  dayOf,
+  daysUntil,
+  endOf,
+  firstDayOf,
+  lastDayOf,
+  lengthOf,
+  monthStartsOf,
+  msToMidnight,
+  type Quarter,
+  quarterOf,
+  screenFor,
+  setupTarget,
+  spanOf,
+  weekdayDate,
+} from './quarters'
 import type { QuestContent, Snapshot } from './store'
 
 describe('quarterOf', () => {
@@ -60,6 +75,83 @@ describe('dayOf', () => {
     ['2026-12-31', '2027-Q1'],
   ] as const)('%s is before Day 1 of %s', (date, quarter) => {
     expect(dayOf(date, quarter)).toBe('before')
+  })
+})
+
+describe('firstDayOf and lastDayOf', () => {
+  it.each([
+    ['2026-Q4', '2026-10-01', '2026-12-31'],
+    ['2027-Q1', '2027-01-01', '2027-03-31'],
+    ['2026-Q2', '2026-04-01', '2026-06-30'],
+    ['2026-Q3', '2026-07-01', '2026-09-30'],
+  ] as const)('%s runs from %s to %s', (quarter, first, last) => {
+    expect(firstDayOf(quarter)).toBe(first)
+    expect(lastDayOf(quarter)).toBe(last)
+  })
+})
+
+describe('daysUntil', () => {
+  it.each([
+    ['2026-09-29', '2026-10-01', 2],
+    ['2026-09-30', '2026-10-01', 1],
+    ['2026-10-01', '2026-10-01', 0],
+    ['2026-12-18', '2027-01-01', 14],
+    ['2026-03-28', '2026-03-30', 2], // across the change to summer time, in zones that have one
+  ] as const)('from %s to %s is %i days', (from, to, days) => {
+    expect(daysUntil(from, to)).toBe(days)
+  })
+})
+
+describe('monthStartsOf', () => {
+  it.each([
+    ['2026-Q4', [1, 32, 62]],
+    ['2027-Q1', [1, 32, 60]],
+    ['2028-Q1', [1, 32, 61]], // a leap year
+    ['2026-Q3', [1, 32, 63]],
+  ] as const)('%s starts a month on Days %j', (quarter, days) => {
+    expect(monthStartsOf(quarter)).toEqual(days)
+  })
+})
+
+describe('msToMidnight', () => {
+  const hours = (h: number) => h * 60 * 60 * 1000
+
+  it.each([
+    ['2026-11-12T10:00', hours(14)],
+    ['2026-11-12T00:00', hours(24)],
+    ['2026-11-12T23:59:59.500', 500],
+    ['2026-12-31T23:00', hours(1)],
+  ] as const)('from %s local time is %i ms', (moment, ms) => {
+    expect(msToMidnight(new Date(moment))).toBe(ms)
+  })
+
+  describe('where the clocks change (London)', () => {
+    const zone = process.env.TZ
+    afterEach(() => {
+      // process.env holds strings only, so an unset zone is deleted, not set to undefined
+      if (zone === undefined) delete process.env.TZ
+      else process.env.TZ = zone
+    })
+
+    it.each([
+      ['2026-10-25T00:30', hours(24.5)], // the clocks go back an hour at 02:00
+      ['2026-03-29T00:30', hours(22.5)], // they go forward an hour at 01:00
+    ] as const)('from %s local time is %i ms', (moment, ms) => {
+      process.env.TZ = 'Europe/London'
+      expect(msToMidnight(new Date(moment))).toBe(ms)
+    })
+  })
+})
+
+describe('weekdayDate', () => {
+  it.each([
+    ['2026-11-12', 'Thursday 12 Nov'],
+    ['2026-10-01', 'Thursday 1 Oct'],
+    ['2026-09-29', 'Tuesday 29 Sep'],
+    ['2027-01-03', 'Sunday 3 Jan'],
+    ['2028-02-29', 'Tuesday 29 Feb'],
+  ] as const)('%s reads %s', (date, line) => {
+    expect(weekdayDate(date)).toBe(line)
   })
 })
 

@@ -9,10 +9,17 @@ export type LocalDate = string
 /** A calendar quarter, keyed like "2026-Q4" */
 export type Quarter = `${number}-Q${1 | 2 | 3 | 4}`
 
+const pad = (n: number) => String(n).padStart(2, '0')
+
 /** The phone's local calendar date at that moment */
 export function localDate(moment: Date): LocalDate {
-  const pad = (n: number) => String(n).padStart(2, '0')
   return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
+}
+
+/** How long from that moment until the next local midnight, when the phone's date changes */
+export function msToMidnight(moment: Date): number {
+  const midnight = new Date(moment.getFullYear(), moment.getMonth(), moment.getDate() + 1)
+  return midnight.getTime() - moment.getTime()
 }
 
 const ymd = (date: LocalDate) => date.split('-').map(Number) as [number, number, number]
@@ -81,6 +88,33 @@ function startOf(quarter: Quarter): number {
   return dayNumber(year, q * 3 - 2, 1)
 }
 
+/** The date of a day number */
+function dateOf(day: number): LocalDate {
+  const utc = new Date(day * MS_PER_DAY)
+  return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())}`
+}
+
+/** The Quarter's Day 1 */
+export function firstDayOf(quarter: Quarter): LocalDate {
+  return dateOf(startOf(quarter))
+}
+
+/** The Quarter's last Day */
+export function lastDayOf(quarter: Quarter): LocalDate {
+  return dateOf(startOf(nextQuarter(quarter)) - 1)
+}
+
+/** Whole days from one date to a later one: 2 from 29 Sep to 1 Oct */
+export function daysUntil(from: LocalDate, to: LocalDate): number {
+  return dayNumber(...ymd(to)) - dayNumber(...ymd(from))
+}
+
+/** The Days on which each of the Quarter's three months starts, which the ring marks with a longer tick */
+export function monthStartsOf(quarter: Quarter): number[] {
+  const [year, q] = yearAndNumber(quarter)
+  return [0, 1, 2].map((month) => dayNumber(year, q * 3 - 2 + month, 1) - startOf(quarter) + 1)
+}
+
 export function nextQuarter(quarter: Quarter): Quarter {
   const [year, q] = yearAndNumber(quarter)
   return q === 4 ? `${year + 1}-Q1` : `${year}-Q${(q + 1) as 2 | 3 | 4}`
@@ -99,6 +133,14 @@ export function dayOf(date: LocalDate, quarter: Quarter): number | 'before' {
 /** 0 for Sunday to 6 for Saturday, as Date counts them */
 export function weekdayOf(date: LocalDate): number {
   return new Date(dayNumber(...ymd(date)) * MS_PER_DAY).getUTCDay()
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+
+/** "Thursday 12 Nov", as Today's date line reads (spec §6.1) */
+export function weekdayDate(date: LocalDate): string {
+  const [, month, day] = ymd(date)
+  return `${WEEKDAYS[weekdayOf(date)]} ${day} ${MONTHS[month - 1]!.slice(0, 3)}`
 }
 
 /** How many of a Quarter's last days aim setup at the Upcoming Quarter instead (spec §3.2) */
