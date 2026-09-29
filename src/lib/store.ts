@@ -77,15 +77,27 @@ export interface Store {
   finishQuest(quarter: Quarter, quest: Quest, content: QuestContent): Promise<void>
 }
 
-/** Why the store refused a write */
-export type Refusal = 'incomplete' | 'quarter-ended' | 'not-allowed'
+/** Why a write didn't happen */
+export type Refusal =
+  /** It failed, and failed again on a fresh connection (spec §13.5) */
+  | 'failed'
+  /** The iPhone's storage is full */
+  | 'storage-full'
+  /** The data is from a newer Cadence (spec §13.4) */
+  | 'read-only'
+  /** It was for a Past Quarter */
+  | 'quarter-ended'
+  /** It would finish a Quest that isn't complete (spec §10) */
+  | 'incomplete'
+  /** It breaks another of setup's rules, which the UI shouldn't have offered */
+  | 'not-allowed'
 
 /** A write that didn't happen. Nothing was saved, and `message` says why in words the UI can show. */
 export class StoreError extends Error {
   readonly reason: Refusal
 
-  constructor(reason: Refusal, message: string) {
-    super(message)
+  constructor(reason: Refusal, message: string, options?: ErrorOptions) {
+    super(message, options)
     this.name = 'StoreError'
     this.reason = reason
   }
@@ -120,6 +132,18 @@ function isComplete(content: QuestContent): boolean {
 /** A change to one key: the value to put, or undefined to delete it */
 type Change = [key: string, value: unknown]
 
+/** The DOMException names iOS gives when it has dropped the connection, so a fresh one may work */
+const CONNECTION_LOST = ['InvalidStateError', 'UnknownError']
+
+/** An error's name, read directly: a DOMException may come from another realm, where instanceof fails */
+const nameOf = (error: unknown) => (typeof error === 'object' && error !== null && 'name' in error ? error.name : undefined)
+
+function failedSave(error: unknown): StoreError {
+  return nameOf(error) === 'QuotaExceededError'
+    ? new StoreError('storage-full', "Couldn't save: iPhone storage is full.", { cause: error })
+    : new StoreError('failed', "Couldn't save. Close and reopen Cadence, or restart the iPhone.", { cause: error })
+}
+
 /** Every change lands, or none do: one IndexedDB transaction */
 function transact(kv: UseStore, changes: Change[]): Promise<void> {
   return kv('readwrite', (store) => {
@@ -141,7 +165,7 @@ function withEntry<K extends string, V>(record: Partial<Record<K, V>>, key: K, v
 
 /** Loads everything into memory, and writes `meta` on first run */
 export async function open(clock: () => Date, connect = () => createStore('cadence', 'kv')): Promise<Store> {
-  const kv = connect()
+  let kv = connect()
   let snapshot: Snapshot = {
     quarters: {},
     setupDrafts: {},
@@ -160,6 +184,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     }
   }
   if (!hasMeta) await transact(kv, [['meta', snapshot.meta]])
+  snapshot.readOnly = snapshot.meta.schemaVersion > SCHEMA_VERSION
 
   const listeners = new Set<() => void>()
   const today = () => localDate(clock())
@@ -184,7 +209,18 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
   async function commit(changes: Change[], next: Snapshot) {
-    await transact(kv, changes)
+    if (snapshot.readOnly) {
+      throw new StoreError('read-only', 'This data is from a newer Cadence. Update Cadence to make changes.')
+    }
+    try {
+      await transact(kv, changes)
+    } catch (error) {
+      if (!CONNECTION_LOST.includes(String(nameOf(error)))) throw failedSave(error)
+      kv = connect()
+      await transact(kv, changes).catch((again: unknown) => {
+        throw failedSave(again)
+      })
+    }
     snapshot = next
     for (const listener of listeners) listener()
   }

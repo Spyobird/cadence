@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
-import { createStore, get } from 'idb-keyval'
+import { createStore, get, set, type UseStore } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { screenFor } from './quarters'
 import { open, type QuestContent, type SetupDraft, StoreError } from './store'
@@ -14,6 +14,8 @@ const itIs = (when: string) => {
 
 /** Reads a key as stored, for the records whose shape is the contract (spec §13.2) */
 const stored = (key: string) => get(key, createStore('cadence', 'kv'))
+/** Puts data on the phone as another build of Cadence left it */
+const leftOnPhone = (key: string, value: unknown) => set(key, value, createStore('cadence', 'kv'))
 
 /** A complete Quest, already tidy */
 const quest: QuestContent = {
@@ -46,6 +48,26 @@ describe('open', () => {
     const meta = { schemaVersion: 1, lastBackupAt: null, appearance: 'system' }
     expect(store.snapshot().meta).toEqual(meta)
     expect(await stored('meta')).toEqual(meta)
+  })
+})
+
+describe('data from a newer Cadence', () => {
+  const newer = { schemaVersion: 2, lastBackupAt: null, appearance: 'dark' }
+
+  it('opens read-only, and refuses every write', async () => {
+    await leftOnPhone('meta', newer)
+    const store = await open(clock)
+    expect(store.snapshot()).toMatchObject({ readOnly: true, meta: newer })
+
+    const draft: SetupDraft = { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
+    expect(await refusal(store.saveSetupDraft('2026-Q4', draft))).toMatchObject({
+      reason: 'read-only',
+      message: 'This data is from a newer Cadence. Update Cadence to make changes.',
+    })
+    expect(await refusal(store.switchSetupTarget('2026-Q4', '2026-Q3'))).toMatchObject({ reason: 'read-only' })
+    expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({ reason: 'read-only' })
+    expect((await open(clock)).snapshot()).toMatchObject({ quarters: {}, setupDrafts: {} })
+    expect(await stored('meta')).toEqual(newer)
   })
 })
 
@@ -244,6 +266,82 @@ describe('a Past Quarter', () => {
     itIs('2026-10-01T00:01')
     const store = await open(clock)
     expect(await refusal(store.finishQuest('2026-Q3', 'work', quest))).toMatchObject({ reason: 'quarter-ended' })
+    expect((await open(clock)).snapshot().quarters).toEqual({})
+  })
+})
+
+describe('a failed save', () => {
+  const draft: SetupDraft = { at: { quest: 'work', part: 'mainQuest' }, work: { mainQuest: 'ship' }, life: {} }
+  const changed: SetupDraft = { ...draft, work: { mainQuest: 'ship Cadence' } }
+
+  /** Connections to the phone's storage whose next writes can be made to fail, as iOS's IndexedDB can */
+  function flakyPhone() {
+    const failures: string[] = []
+    const connect = (): UseStore => {
+      const kv = createStore('cadence', 'kv')
+      return (mode, callback) => {
+        const failure = mode === 'readwrite' ? failures.shift() : undefined
+        return failure ? Promise.reject(new DOMException('The write failed', failure)) : kv(mode, callback)
+      }
+    }
+    return { connect, failNextWrites: (...names: string[]) => failures.push(...names) }
+  }
+
+  it('is retried on a fresh connection when iOS has closed the old one', async () => {
+    const connections: UseStore[] = []
+    const store = await open(clock, () => {
+      const kv = createStore('cadence', 'kv')
+      connections.push(kv)
+      return kv
+    })
+    await connections[0]!('readonly', (kv) => kv.transaction.db.close())
+
+    await store.saveSetupDraft('2026-Q4', draft)
+    expect((await open(clock)).snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+  })
+
+  it('is retried once after an UnknownError', async () => {
+    const phone = flakyPhone()
+    const store = await open(clock, phone.connect)
+    phone.failNextWrites('UnknownError')
+
+    await store.saveSetupDraft('2026-Q4', draft)
+    expect((await open(clock)).snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+  })
+
+  it('that fails again says so, and keeps what was saved before', async () => {
+    const phone = flakyPhone()
+    const store = await open(clock, phone.connect)
+    await store.saveSetupDraft('2026-Q4', draft)
+    phone.failNextWrites('InvalidStateError', 'UnknownError')
+
+    expect(await refusal(store.saveSetupDraft('2026-Q4', changed))).toMatchObject({
+      reason: 'failed',
+      message: "Couldn't save. Close and reopen Cadence, or restart the iPhone.",
+    })
+    expect(store.snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+    expect((await open(clock)).snapshot().setupDrafts['2026-Q4']).toEqual(draft)
+  })
+
+  it('is not retried for any other error', async () => {
+    const phone = flakyPhone()
+    const store = await open(clock, phone.connect)
+    phone.failNextWrites('AbortError')
+
+    expect(await refusal(store.saveSetupDraft('2026-Q4', draft))).toMatchObject({ reason: 'failed' })
+    expect((await open(clock)).snapshot().setupDrafts).toEqual({})
+  })
+
+  it('says when the iPhone storage is full', async () => {
+    const phone = flakyPhone()
+    const store = await open(clock, phone.connect)
+    phone.failNextWrites('QuotaExceededError')
+
+    expect(await refusal(store.finishQuest('2026-Q4', 'work', quest))).toMatchObject({
+      reason: 'storage-full',
+      message: "Couldn't save: iPhone storage is full.",
+    })
+    expect(store.snapshot().quarters).toEqual({})
     expect((await open(clock)).snapshot().quarters).toEqual({})
   })
 })
