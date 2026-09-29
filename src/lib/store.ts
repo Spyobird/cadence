@@ -3,7 +3,7 @@
 
 import { createStore, entries, promisifyRequest, type UseStore } from 'idb-keyval'
 import type { Appearance } from './appearance'
-import { labelOf, type LocalDate, localDate, nextQuarter, type Quarter, quarterOf } from './quarters'
+import { isFinished, isPast, labelOf, type LocalDate, localDate, nextQuarter, type Quarter, quarterOf } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
 const SCHEMA_VERSION = 1
@@ -133,6 +133,12 @@ function isComplete(content: QuestContent): boolean {
   return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
 }
 
+/** The storage keys (spec §13.2, ADR 0004) */
+const QUARTER_KEY = 'quarter:'
+const SETUP_KEY = 'setup:'
+const quarterKey = (quarter: Quarter) => `${QUARTER_KEY}${quarter}`
+const setupKey = (quarter: Quarter) => `${SETUP_KEY}${quarter}`
+
 /** A change to one key: the value to put, or undefined to delete it */
 type Change = [key: string, value: unknown]
 
@@ -194,10 +200,10 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     if (key === 'meta') {
       snapshot.meta = value as Meta
       hasMeta = true
-    } else if (typeof key === 'string' && key.startsWith('quarter:')) {
-      snapshot.quarters[key.slice('quarter:'.length) as Quarter] = value as QuarterRecord
-    } else if (typeof key === 'string' && key.startsWith('setup:')) {
-      snapshot.setupDrafts[key.slice('setup:'.length) as Quarter] = value as SetupDraft
+    } else if (typeof key === 'string' && key.startsWith(QUARTER_KEY)) {
+      snapshot.quarters[key.slice(QUARTER_KEY.length) as Quarter] = value as QuarterRecord
+    } else if (typeof key === 'string' && key.startsWith(SETUP_KEY)) {
+      snapshot.setupDrafts[key.slice(SETUP_KEY.length) as Quarter] = value as SetupDraft
     }
   }
   if (!hasMeta) await write([['meta', snapshot.meta]])
@@ -208,7 +214,7 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   /** A Past Quarter's key is never written again, and its Drafts are frozen with it (spec §13.4) */
   function refuseIfEnded(quarter: Quarter) {
-    if (quarter < quarterOf(today())) {
+    if (isPast(quarter, today())) {
       throw new StoreError('quarter-ended', `${labelOf(quarter)} ended at midnight, so this can't be saved.`)
     }
   }
@@ -216,13 +222,11 @@ export async function open(clock: () => Date, connect = () => createStore('caden
   /** Setup writes only to the Current or the Upcoming Quarter (spec §3.2) */
   function refuseUnlessSetupTarget(quarter: Quarter) {
     refuseIfEnded(quarter)
-    if (quarter > nextQuarter(quarterOf(today()))) {
+    const current = quarterOf(today())
+    if (quarter !== current && quarter !== nextQuarter(current)) {
       throw new StoreError('not-allowed', `${labelOf(quarter)} can't be set up yet.`)
     }
   }
-
-  /** A Quest is finished once it has a Version */
-  const isFinished = (quarter: Quarter, quest: Quest) => (snapshot.quarters[quarter]?.versions[quest].length ?? 0) > 0
 
   /** Writes the changes, and only once they've landed shows them in memory and tells the listeners */
   async function commit(changes: Change[], next: Snapshot) {
@@ -251,11 +255,11 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     refuseUnlessSetupTarget(quarter)
     for (const quest of QUESTS) {
       // A finished Quest never turns back into a Draft (spec §10)
-      if (isFinished(quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
+      if (isFinished(snapshot, quarter, quest) && (draft.at.quest === quest || Object.keys(draft[quest]).length > 0)) {
         throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is finished, so the setup Draft can't hold it.`)
       }
     }
-    await commit([[`setup:${quarter}`, draft]], {
+    await commit([[setupKey(quarter), draft]], {
       ...snapshot,
       setupDrafts: withEntry(snapshot.setupDrafts, quarter, draft),
     })
@@ -267,15 +271,15 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     if (from === to || snapshot.setupDrafts[to] || snapshot.quarters[to]) {
       throw new StoreError('not-allowed', `Setup can't switch from ${labelOf(from)} to ${labelOf(to)}.`)
     }
-    if (isFinished(from, 'work')) {
+    if (isFinished(snapshot, from, 'work')) {
       throw new StoreError('not-allowed', `The Work Quest is finished, so setup stays on ${labelOf(from)}.`)
     }
     // With nothing typed yet, a blank Draft still keeps the new target
     const draft = snapshot.setupDrafts[from] ?? { at: { quest: 'work', part: 'mainQuest' }, work: {}, life: {} }
     await commit(
       [
-        [`setup:${from}`, undefined],
-        [`setup:${to}`, draft],
+        [setupKey(from), undefined],
+        [setupKey(to), draft],
       ],
       { ...snapshot, setupDrafts: withEntry(withEntry(snapshot.setupDrafts, from, undefined), to, draft) },
     )
@@ -283,8 +287,8 @@ export async function open(clock: () => Date, connect = () => createStore('caden
 
   async function finishQuest(quarter: Quarter, quest: Quest, typed: QuestContent) {
     refuseUnlessSetupTarget(quarter)
-    if (isFinished(quarter, quest)) throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is already finished.`)
-    if (quest === 'life' && !isFinished(quarter, 'work')) {
+    if (isFinished(snapshot, quarter, quest)) throw new StoreError('not-allowed', `The ${NAMES[quest]} Quest is already finished.`)
+    if (quest === 'life' && !isFinished(snapshot, quarter, 'work')) {
       throw new StoreError('not-allowed', 'Setup finishes the Work Quest before the Life Quest.')
     }
     const content = tidyQuest(typed)
@@ -301,17 +305,17 @@ export async function open(clock: () => Date, connect = () => createStore('caden
     }
     const draft = snapshot.setupDrafts[quarter]
     // Work first: finishing it moves setup on to Life, part 1. Finishing Life sets the Quarter up.
-    const left: SetupDraft | undefined =
+    const remaining: SetupDraft | undefined =
       quest === 'work' ? { at: { quest: 'life', part: 'mainQuest' }, work: {}, life: draft?.life ?? {} } : undefined
     await commit(
       [
-        [`quarter:${quarter}`, finished],
-        [`setup:${quarter}`, left],
+        [quarterKey(quarter), finished],
+        [setupKey(quarter), remaining],
       ],
       {
         ...snapshot,
         quarters: withEntry(snapshot.quarters, quarter, finished),
-        setupDrafts: withEntry(snapshot.setupDrafts, quarter, left),
+        setupDrafts: withEntry(snapshot.setupDrafts, quarter, remaining),
       },
     )
   }

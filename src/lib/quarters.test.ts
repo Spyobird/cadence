@@ -87,7 +87,7 @@ describe('screenFor', () => {
   const version = { savedOn: '2026-09-29', content }
 
   /** Stored data with these Quarters set up, these with only Work finished, and setup Drafts for these */
-  function stored({ setUp = [], workOnly = [], drafts = [] }: Partial<Record<'setUp' | 'workOnly' | 'drafts', Quarter[]>>) {
+  function snapshotWith({ setUp = [], workOnly = [], drafts = [] }: Partial<Record<'setUp' | 'workOnly' | 'drafts', Quarter[]>>) {
     const snapshot: Snapshot = {
       quarters: {},
       setupDrafts: {},
@@ -102,11 +102,11 @@ describe('screenFor', () => {
 
   describe('1. running', () => {
     it('opens on Today when the Current Quarter is set up', () => {
-      expect(screenFor(stored({ setUp: ['2026-Q4'] }), '2026-11-12')).toEqual({ name: 'running', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({ setUp: ['2026-Q4'] }), '2026-11-12')).toEqual({ name: 'running', quarter: '2026-Q4' })
     })
 
     it('stays on the Current Quarter until it ends, even with the Upcoming one set up', () => {
-      const both = stored({ setUp: ['2026-Q4', '2027-Q1'] })
+      const both = snapshotWith({ setUp: ['2026-Q4', '2027-Q1'] })
       expect(screenFor(both, '2026-12-31')).toEqual({ name: 'running', quarter: '2026-Q4' })
       expect(screenFor(both, '2027-01-01')).toEqual({ name: 'running', quarter: '2027-Q1' })
     })
@@ -114,38 +114,38 @@ describe('screenFor', () => {
 
   describe('2. before Day 1', () => {
     it('opens on Today for the Upcoming Quarter once it is set up (29 Sep, Q3 never set up)', () => {
-      expect(screenFor(stored({ setUp: ['2026-Q4'] }), '2026-09-29')).toEqual({ name: 'before-day-1', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({ setUp: ['2026-Q4'] }), '2026-09-29')).toEqual({ name: 'before-day-1', quarter: '2026-Q4' })
     })
 
     it('comes before resuming a Draft for the Current Quarter', () => {
-      const snapshot = stored({ setUp: ['2026-Q4'], drafts: ['2026-Q3'] })
+      const snapshot = snapshotWith({ setUp: ['2026-Q4'], drafts: ['2026-Q3'] })
       expect(screenFor(snapshot, '2026-09-29')).toEqual({ name: 'before-day-1', quarter: '2026-Q4' })
     })
   })
 
   describe('3. resume', () => {
     it("resumes the Upcoming Quarter's Draft (29 Sep, Q4 not yet set up)", () => {
-      expect(screenFor(stored({ drafts: ['2026-Q4'] }), '2026-09-29')).toEqual({ name: 'resume', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({ drafts: ['2026-Q4'] }), '2026-09-29')).toEqual({ name: 'resume', quarter: '2026-Q4' })
     })
 
     it("resumes the Current Quarter's Draft", () => {
-      expect(screenFor(stored({ drafts: ['2026-Q4'] }), '2026-10-05')).toEqual({ name: 'resume', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({ drafts: ['2026-Q4'] }), '2026-10-05')).toEqual({ name: 'resume', quarter: '2026-Q4' })
     })
 
     it('resumes a Quarter with only its Work Quest finished, since it is not set up', () => {
-      const snapshot = stored({ workOnly: ['2026-Q4'], drafts: ['2026-Q4'] })
+      const snapshot = snapshotWith({ workOnly: ['2026-Q4'], drafts: ['2026-Q4'] })
       expect(screenFor(snapshot, '2026-09-29')).toEqual({ name: 'resume', quarter: '2026-Q4' })
     })
 
     it('resumes before showing the ended state (1 Jan, Q1 Draft started in December)', () => {
-      const snapshot = stored({ setUp: ['2026-Q4'], drafts: ['2027-Q1'] })
+      const snapshot = snapshotWith({ setUp: ['2026-Q4'], drafts: ['2027-Q1'] })
       expect(screenFor(snapshot, '2027-01-01')).toEqual({ name: 'resume', quarter: '2027-Q1' })
     })
   })
 
   describe('4. ended', () => {
     it('shows the Quarter that just ended, with setup for the Current Quarter', () => {
-      expect(screenFor(stored({ setUp: ['2026-Q4'] }), '2027-01-01')).toEqual({
+      expect(screenFor(snapshotWith({ setUp: ['2026-Q4'] }), '2027-01-01')).toEqual({
         name: 'ended',
         quarter: '2026-Q4',
         next: '2027-Q1',
@@ -153,7 +153,7 @@ describe('screenFor', () => {
     })
 
     it('shows the latest set-up Quarter when a Quarter was skipped entirely', () => {
-      expect(screenFor(stored({ setUp: ['2026-Q2', '2026-Q3'] }), '2027-01-15')).toEqual({
+      expect(screenFor(snapshotWith({ setUp: ['2026-Q2', '2026-Q3'] }), '2027-01-15')).toEqual({
         name: 'ended',
         quarter: '2026-Q3',
         next: '2027-Q1',
@@ -161,7 +161,7 @@ describe('screenFor', () => {
     })
 
     it('sets up the Current Quarter even in its last 14 days', () => {
-      expect(screenFor(stored({ setUp: ['2026-Q3'] }), '2026-12-20')).toEqual({
+      expect(screenFor(snapshotWith({ setUp: ['2026-Q3'] }), '2026-12-20')).toEqual({
         name: 'ended',
         quarter: '2026-Q3',
         next: '2026-Q4',
@@ -169,26 +169,26 @@ describe('screenFor', () => {
     })
 
     it('ignores a frozen Draft', () => {
-      const snapshot = stored({ setUp: ['2026-Q3'], drafts: ['2026-Q4'] })
+      const snapshot = snapshotWith({ setUp: ['2026-Q3'], drafts: ['2026-Q4'] })
       expect(screenFor(snapshot, '2027-01-01')).toEqual({ name: 'ended', quarter: '2026-Q3', next: '2027-Q1' })
     })
   })
 
   describe('5. setup', () => {
     it('opens a blank setup for the Current Quarter', () => {
-      expect(screenFor(stored({}), '2026-09-10')).toEqual({ name: 'setup', quarter: '2026-Q3' })
+      expect(screenFor(snapshotWith({}), '2026-09-10')).toEqual({ name: 'setup', quarter: '2026-Q3' })
     })
 
     it('aims at the Upcoming Quarter in the last 14 days (29 Sep)', () => {
-      expect(screenFor(stored({}), '2026-09-29')).toEqual({ name: 'setup', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({}), '2026-09-29')).toEqual({ name: 'setup', quarter: '2026-Q4' })
     })
 
     it('never resumes a frozen Draft', () => {
-      expect(screenFor(stored({ drafts: ['2026-Q4'] }), '2027-01-01')).toEqual({ name: 'setup', quarter: '2027-Q1' })
+      expect(screenFor(snapshotWith({ drafts: ['2026-Q4'] }), '2027-01-01')).toEqual({ name: 'setup', quarter: '2027-Q1' })
     })
 
     it('does not count a Past Quarter with only its Work Quest finished as set up', () => {
-      expect(screenFor(stored({ workOnly: ['2026-Q3'] }), '2026-11-01')).toEqual({ name: 'setup', quarter: '2026-Q4' })
+      expect(screenFor(snapshotWith({ workOnly: ['2026-Q3'] }), '2026-11-01')).toEqual({ name: 'setup', quarter: '2026-Q4' })
     })
   })
 })

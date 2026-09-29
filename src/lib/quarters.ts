@@ -1,7 +1,7 @@
 // Pure date maths for Quarters and Days (spec §3). Dates are the phone's local calendar dates, written
 // "2026-11-12"; no time zone is stored.
 
-import type { Snapshot } from './store'
+import type { Quest, Snapshot } from './store'
 
 /** A local calendar date, like "2026-11-12" */
 export type LocalDate = string
@@ -15,17 +15,24 @@ export function localDate(moment: Date): LocalDate {
   return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
 }
 
-const parts = (date: LocalDate) => date.split('-').map(Number) as [number, number, number]
+const ymd = (date: LocalDate) => date.split('-').map(Number) as [number, number, number]
+/** "2026-Q4" as [2026, 4] */
+const yearAndNumber = (quarter: Quarter) => quarter.split('-Q').map(Number) as [number, number]
 
 export function quarterOf(date: LocalDate): Quarter {
-  const [year, month] = parts(date)
+  const [year, month] = ymd(date)
   return `${year}-Q${Math.ceil(month / 3) as 1 | 2 | 3 | 4}`
 }
 
 /** "Q4 2026" */
 export function labelOf(quarter: Quarter): string {
-  const [year, q] = quarter.split('-')
-  return `${q} ${year}`
+  const [year, q] = yearAndNumber(quarter)
+  return `Q${q} ${year}`
+}
+
+/** A Past Quarter's last day has gone. Quarter keys sort in calendar order. */
+export function isPast(quarter: Quarter, today: LocalDate): boolean {
+  return quarter < quarterOf(today)
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -35,12 +42,12 @@ const dayNumber = (year: number, month: number, day: number) => Date.UTC(year, m
 
 /** The Quarter's first day, as a day number */
 function startOf(quarter: Quarter): number {
-  const [year, q] = quarter.split('-Q').map(Number) as [number, number]
+  const [year, q] = yearAndNumber(quarter)
   return dayNumber(year, q * 3 - 2, 1)
 }
 
 export function nextQuarter(quarter: Quarter): Quarter {
-  const [year, q] = quarter.split('-Q').map(Number) as [number, number]
+  const [year, q] = yearAndNumber(quarter)
   return q === 4 ? `${year + 1}-Q1` : `${year}-Q${(q + 1) as 2 | 3 | 4}`
 }
 
@@ -50,8 +57,13 @@ export function lengthOf(quarter: Quarter): number {
 
 /** The date's Day within the Quarter, counted from the Quarter's first day, or "before" Day 1 */
 export function dayOf(date: LocalDate, quarter: Quarter): number | 'before' {
-  const day = dayNumber(...parts(date)) - startOf(quarter) + 1
+  const day = dayNumber(...ymd(date)) - startOf(quarter) + 1
   return day < 1 ? 'before' : day
+}
+
+/** 0 for Sunday to 6 for Saturday, as Date counts them */
+export function weekdayOf(date: LocalDate): number {
+  return new Date(dayNumber(...ymd(date)) * MS_PER_DAY).getUTCDay()
 }
 
 /** How many of a Quarter's last days aim setup at the Upcoming Quarter instead (spec §3.2) */
@@ -62,6 +74,16 @@ export function setupTarget(today: LocalDate): Quarter {
   const current = quarterOf(today)
   const daysLeft = lengthOf(current) - (dayOf(today, current) as number)
   return daysLeft < LAST_DAYS ? nextQuarter(current) : current
+}
+
+/** A Quest is finished once it has a Version (spec §3) */
+export function isFinished(snapshot: Snapshot, quarter: Quarter, quest: Quest): boolean {
+  return (snapshot.quarters[quarter]?.versions[quest].length ?? 0) > 0
+}
+
+/** A Quarter is set up once both of its Quests are finished */
+export function isSetUp(snapshot: Snapshot, quarter: Quarter): boolean {
+  return isFinished(snapshot, quarter, 'work') && isFinished(snapshot, quarter, 'life')
 }
 
 /** Which screen Cadence opens on (spec §3.1) */
@@ -81,10 +103,7 @@ export type Screen =
 export function screenFor(snapshot: Snapshot, today: LocalDate): Screen {
   const current = quarterOf(today)
   const upcoming = nextQuarter(current)
-  const setUp = (quarter: Quarter) => {
-    const versions = snapshot.quarters[quarter]?.versions
-    return !!versions && versions.work.length > 0 && versions.life.length > 0
-  }
+  const setUp = (quarter: Quarter) => isSetUp(snapshot, quarter)
 
   if (setUp(current)) return { name: 'running', quarter: current }
   if (setUp(upcoming)) return { name: 'before-day-1', quarter: upcoming }
@@ -92,7 +111,7 @@ export function screenFor(snapshot: Snapshot, today: LocalDate): Screen {
   const draft = [current, upcoming].find((quarter) => snapshot.setupDrafts[quarter])
   if (draft) return { name: 'resume', quarter: draft }
   const latest = (Object.keys(snapshot.quarters) as Quarter[])
-    .filter((quarter) => quarter < current && setUp(quarter))
+    .filter((quarter) => isPast(quarter, today) && setUp(quarter))
     .sort()
     .at(-1)
   if (latest) return { name: 'ended', quarter: latest, next: current }

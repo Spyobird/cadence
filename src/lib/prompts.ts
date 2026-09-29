@@ -1,4 +1,4 @@
-import type { LocalDate } from './quarters'
+import { type LocalDate, weekdayOf } from './quarters'
 
 /** One Prompt per weekday, Sunday first as Date counts them, shared by both Quests (spec §7.2) */
 const PROMPTS = [
@@ -13,6 +13,5 @@ const PROMPTS = [
 
 /** The Prompt for a Day's date */
 export function promptFor(date: LocalDate): string {
-  // A date-only string parses as UTC midnight, so the UTC weekday is the calendar's
-  return PROMPTS[new Date(date).getUTCDay()]!
+  return PROMPTS[weekdayOf(date)]!
 }
