@@ -15,7 +15,7 @@ interface Props {
 export function ScreenHeader({ left, title, note, right }: Props) {
   return (
     <header className="sticky top-0 z-10 bg-void pt-safe">
-      <div className="mx-auto grid max-w-[600px] grid-cols-[6em_1fr_6em] items-center px-gutter">
+      <div className="mx-auto grid max-w-[600px] grid-cols-[1fr_auto_1fr] items-center gap-2 px-gutter">
         <div className="justify-self-start">{left}</div>
         <div className="py-1.5 text-center">
           <h1 className="font-semibold">{title}</h1>

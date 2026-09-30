@@ -134,8 +134,8 @@ export function Edit({ quarter, quest, onClose }: Props) {
           </button>
         }
         title={`${NAMES[quest]} Quest`}
-        // A line kept even when Save is on, so the header doesn't jump
-        note={why ?? ' '}
+        // Once Save is on, the note says what it would keep, as the menu's "Edit · unsaved changes" does
+        note={why ?? 'Unsaved changes'}
         right={
           <button type="button" className={`${nav} font-semibold`} onClick={save} disabled={!!why || saving}>
             Save

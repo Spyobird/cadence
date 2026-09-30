@@ -105,6 +105,7 @@ describe('Edit (spec §8)', () => {
 
     expect(part('My Work Main Quest is to')).toHaveAccessibleDescription('Changed')
     expect(part('This is the single most important thing')).not.toHaveAccessibleDescription()
+    expect(screen.getByRole('banner')).toHaveTextContent('Unsaved changes')
     expect(screen.queryByText('No changes yet')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
