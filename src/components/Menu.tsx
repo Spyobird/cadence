@@ -2,7 +2,7 @@
 
 import type { Ref } from 'react'
 import { useCadence } from '../hooks/useCadence'
-import { labelOf, type Quarter } from '../lib/quarters'
+import { labelOf, type Quarter, reflectionCount } from '../lib/quarters'
 import { NAMES, type Quest, QUESTS } from '../lib/store'
 import { AppearanceSwitch } from './AppearanceSwitch'
 import { lastBackupWords } from './backupWords'
@@ -48,6 +48,7 @@ interface Props {
 
 export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, onArchive, onBackup, onFailure }: Props) {
   const { snapshot, today, backupDue } = useCadence()
+  const reflections = reflectionCount(snapshot)
   return (
     <Sheet label="Menu" onClose={onClose}>
       <p className="font-semibold">{labelOf(quarter)}</p>
@@ -79,6 +80,9 @@ export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, on
         className="flex min-h-14 w-full items-center justify-between gap-3 border-t border-line text-left"
       >
         Archive
+        <span className="text-faint tabular-nums">
+          {reflections === 0 ? 'None yet' : `${reflections} ${reflections === 1 ? 'Reflection' : 'Reflections'}`}
+        </span>
       </button>
       <button
         type="button"

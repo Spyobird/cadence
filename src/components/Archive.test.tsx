@@ -145,3 +145,32 @@ describe('the Archive (spec §11)', () => {
     expect(screen.queryByText(/^How do you actually feel about your progress/)).not.toBeInTheDocument()
   })
 })
+
+describe("the menu's Archive row (spec §6.3)", () => {
+  /** Opens the menu on Today, and finds its Archive row */
+  async function archiveRow() {
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Menu' }))
+    return within(screen.getByRole('dialog', { name: 'Menu' })).getByRole('button', { name: /^Archive/ })
+  }
+
+  it('counts every Reflection, across Quarters', async () => {
+    await reflectAcrossTwoQuarters()
+    itIs('2027-01-09T08:00')
+    await launch()
+    expect(await archiveRow()).toHaveTextContent(/^Archive4 Reflections$/)
+  })
+
+  it('reads "None yet" before any Reflection, and "1 Reflection" for one', async () => {
+    const store = await open(() => now)
+    itIs('2026-09-29T10:00')
+    await setUp(store, '2026-Q4')
+    itIs('2026-11-12T07:30')
+    const { unmount } = await launch()
+    expect(await archiveRow()).toHaveTextContent(/^ArchiveNone yet$/)
+
+    unmount()
+    await store.saveReflection('2026-Q4', 'work', 'Shipped the ring.')
+    await launch()
+    expect(await archiveRow()).toHaveTextContent(/^Archive1 Reflection$/)
+  })
+})

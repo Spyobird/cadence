@@ -246,6 +246,11 @@ export function reflectionDays(snapshot: Snapshot): ReflectionDay[] {
     .map(([date, reflections]) => ({ date, reflections }))
 }
 
+/** How many Reflections there are, across all Quarters: the menu's Archive row (spec §6.3) */
+export function reflectionCount(snapshot: Snapshot): number {
+  return reflectionDays(snapshot).reduce((count, { reflections }) => count + Object.keys(reflections).length, 0)
+}
+
 /** A Quest is finished once it has a Version (spec §3) */
 export function isFinished(snapshot: Snapshot, quarter: Quarter, quest: Quest): boolean {
   return currentVersion(snapshot, quarter, quest) !== undefined
