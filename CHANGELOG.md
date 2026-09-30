@@ -26,6 +26,7 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - Editing a Quest from the menu: tap a part of the read-back to change it on its own screen, then Save. A Quest keeps one Version a day, and a save that changes nothing adds none.
 - An unsaved edit is kept when Cadence is closed, even into the next day, and the menu's Edit says "unsaved changes" until it's saved or discarded.
 - Each Quest's History: how it changed across the Quarter, newest first, with each Version readable in full.
+- The Archive of Reflections, from the menu: every Reflection so far, newest day first, each day under the Prompt it was written with. The menu says how many there are.
 
 ### Changed
 
