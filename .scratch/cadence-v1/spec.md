@@ -355,6 +355,8 @@ Edit uses the same surface as setup.
   - "No changes yet";
   - "Main Quest can't be empty" (or whichever part is empty);
   - "Add at least one Success Metric" (or Commitment).
+
+  Once Save is on, the note reads "Unsaved changes", as the menu's "Edit · unsaved changes" does.
 - **The Obstacle** can be left empty.
 - **Cancel with changes:** asks "Discard your changes?" (Discard changes / Keep editing).
 - **The Draft:** saved as typed (`edit:2026-Q4:work`, with when it started). It survives the app closing and across Days. Reopening Edit on that Quest restores it, with "Your unsaved changes from 10:42 are still here." On an earlier Day, it reads "from Thu 10:42". The Draft is deleted once it matches the saved Version again. Cadence itself still opens on Today.
@@ -621,7 +623,7 @@ These weren't decided in a ticket. The spec settles them so the build doesn't ha
 
 - The ended state shows the latest set-up Quarter when a Quarter was skipped (§3.1).
 - Setup started from Today for the Upcoming Quarter has a Close button, and the Today link reads "Finish setting it up" once a Draft exists (§5.4, §6.4).
-- The menu's Edit button notes "unsaved changes". Cadence opens on Today, not on the Edit screen (§6.3, §8).
+- The menu's Edit button notes "unsaved changes", and so does Edit's header once Save is on. Cadence opens on Today, not on the Edit screen (§6.3, §8).
 - The Reflection popup's Cancel asks before discarding changes. A Reflection or edit saved just after the Quarter ended is refused with a message, and the text is kept (§7, §8).
 - Today re-reads the date when the page becomes visible and at midnight (§3).
 - The Archive's Day header, and its empty state (§11).
