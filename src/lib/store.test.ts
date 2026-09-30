@@ -38,6 +38,14 @@ async function refusal(write: Promise<void>) {
   return error as StoreError
 }
 
+/** Q4 2026, set up on 29 Sep */
+async function setUpQ4() {
+  const store = await open(clock)
+  await store.finishQuest('2026-Q4', 'work', quest)
+  await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
+  return store
+}
+
 beforeEach(() => {
   indexedDB = new IDBFactory()
   itIs('2026-09-29T10:00')
@@ -377,14 +385,6 @@ describe('a Past Quarter', () => {
 describe('Reflections', () => {
   const THURSDAYS_PROMPT = "What's getting in the way right now, and what will you do when it shows up?"
 
-  /** Q4 2026, set up on 29 Sep */
-  async function setUpQ4() {
-    const store = await open(clock)
-    await store.finishQuest('2026-Q4', 'work', quest)
-    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
-    return store
-  }
-
   it("keeps today's Reflection on a Quest with a copy of the day's Prompt, across a reopen", async () => {
     const store = await setUpQ4()
     itIs('2026-11-12T10:00')
@@ -504,14 +504,6 @@ describe('Reflections', () => {
 })
 
 describe('an edit Draft', () => {
-  /** Q4 2026, set up on 29 Sep */
-  async function setUpQ4() {
-    const store = await open(clock)
-    await store.finishQuest('2026-Q4', 'work', quest)
-    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
-    return store
-  }
-
   it('keeps the words as typed, and when the edit started, across a reopen and across Days (spec §8)', async () => {
     const store = await setUpQ4()
     itIs('2026-11-12T10:42')
@@ -589,14 +581,6 @@ describe('an edit Draft', () => {
 describe('saveQuest (spec §10)', () => {
   const v2 = { ...quest, mainQuest: 'ship Cadence v2' }
   const v3 = { ...quest, mainQuest: 'ship Cadence v3' }
-
-  /** Q4 2026, set up on 29 Sep */
-  async function setUpQ4() {
-    const store = await open(clock)
-    await store.finishQuest('2026-Q4', 'work', quest)
-    await store.finishQuest('2026-Q4', 'life', { ...quest, mainQuest: 'run 5K in under 25 minutes' })
-    return store
-  }
 
   /** Work's Versions, in memory and as reopened, which must agree */
   async function workVersions(store: Awaited<ReturnType<typeof open>>) {
