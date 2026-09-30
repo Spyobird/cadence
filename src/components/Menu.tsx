@@ -48,7 +48,7 @@ interface Props {
 
 export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, onArchive, onBackup, onFailure }: Props) {
   const { snapshot, today, backupDue } = useCadence()
-  const reflections = reflectionCount(snapshot)
+  const reflectionTotal = reflectionCount(snapshot)
   return (
     <Sheet label="Menu" onClose={onClose}>
       <p className="font-semibold">{labelOf(quarter)}</p>
@@ -81,7 +81,9 @@ export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, on
       >
         Archive
         <span className="text-faint tabular-nums">
-          {reflections === 0 ? 'None yet' : `${reflections} ${reflections === 1 ? 'Reflection' : 'Reflections'}`}
+          {reflectionTotal === 0
+            ? 'None yet'
+            : `${reflectionTotal} ${reflectionTotal === 1 ? 'Reflection' : 'Reflections'}`}
         </span>
       </button>
       <button

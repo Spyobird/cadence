@@ -19,6 +19,7 @@ import {
   nextQuarter,
   type Quarter,
   quarterOf,
+  reflectionCount,
 } from './quarters'
 
 /** The schema this build reads and writes (spec §13.4) */
@@ -398,13 +399,12 @@ function checkBackup(text: string): Preview | Problem {
   ) {
     return problem('damaged')
   }
-  const days = quarters.flatMap(([, record]) => Object.values(record.reflections))
   // Every key but meta names its Quarter second: quarter:2026-Q4, setup:2026-Q4, edit:2026-Q4:work
   const held = Object.keys(data).flatMap((key) => (key === 'meta' ? [] : [key.split(':')[1] as Quarter]))
   return {
     exportedAt: exportedAt as number,
     quarters: [...new Set(held)].sort(),
-    reflectionCount: days.reduce((count, day) => count + Object.keys(day).length, 0),
+    reflectionCount: reflectionCount(loaded),
     data,
   }
 }
