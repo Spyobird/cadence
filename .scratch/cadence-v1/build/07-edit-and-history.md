@@ -1,7 +1,7 @@
 # Edit and History
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 06
 
 ## Goal
@@ -32,7 +32,7 @@ The owner can change a Quest mid-quarter, and see how it changed, one Version pe
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed.
+- [x] Deployed, at `adf1436` on 1 Oct 2026. Edit with a Draft surviving a kill, and the History rows, are checked on the phone at slice 10 (§15.2).
 - [x] `CHANGELOG.md`: "Added: editing a Quest, and its History".
 
 ## Build notes
