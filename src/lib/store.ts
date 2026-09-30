@@ -223,12 +223,12 @@ export function isComplete(content: QuestContent): boolean {
 }
 
 /** The Quest tidied, as it's kept, once it's complete: a Quest can only be finished or saved whole (spec §10) */
-function completeQuest(typed: QuestContent, as: 'finished' | 'saved'): QuestContent {
+function completeQuest(typed: QuestContent, toBe: 'finished' | 'saved'): QuestContent {
   const content = tidyQuest(typed)
   if (!isComplete(content)) {
     throw new StoreError(
       'incomplete',
-      `Only a complete Quest can be ${as}: every part but the Obstacle written, and one to five items in each list.`,
+      `Only a complete Quest can be ${toBe}: every part but the Obstacle written, and one to five items in each list.`,
     )
   }
   return content

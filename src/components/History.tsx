@@ -20,19 +20,19 @@ export function History({ quarter, quest, onBack }: Props) {
   const { snapshot } = useCadence()
   const versions = snapshot.quarters[quarter]?.versions[quest] ?? []
   const newestFirst = [...versions].reverse()
-  /** The Version open, by its place newest first */
-  const [open, setOpen] = useState<number>()
-  const version = open === undefined ? undefined : newestFirst[open]
+  /** The Version shown, by its place newest first */
+  const [shown, setShown] = useState<number>()
+  const version = shown === undefined ? undefined : newestFirst[shown]
 
   if (version) {
     return (
       <>
         <Banners />
-        <ScreenHeader left={<BackButton to="History" onClick={() => setOpen(undefined)} />} title={`${NAMES[quest]} Quest`} />
+        <ScreenHeader left={<BackButton to="History" onClick={() => setShown(undefined)} />} title={`${NAMES[quest]} Quest`} />
         <main className="mx-auto max-w-[600px] px-gutter pb-safe">
           <p className="mt-3 text-s text-faint tabular-nums">
             {versionDay(version.savedOn, quarter)}
-            {open === 0 && ' · Current'}
+            {shown === 0 && ' · Current'}
           </p>
           <ReadBack quest={quest} quarter={quarter} content={version.content} />
         </main>
@@ -49,7 +49,7 @@ export function History({ quarter, quest, onBack }: Props) {
         <ol className="mt-3">
           {newestFirst.map(({ savedOn, content }, index) => (
             <li key={savedOn}>
-              <button type="button" onClick={() => setOpen(index)} className="block w-full border-b border-line py-3.5 text-left">
+              <button type="button" onClick={() => setShown(index)} className="block w-full border-b border-line py-3.5 text-left">
                 <span className="flex justify-between gap-3 text-s text-faint tabular-nums">
                   {versionDay(savedOn, quarter)}
                   {index === 0 && <span className="font-semibold text-given">Current</span>}

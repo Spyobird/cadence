@@ -40,9 +40,9 @@ export function PartScreen(props: Props) {
   const openingId = useId()
   const { opening, placeholder, hint, item } = SCAFFOLD[part]
   const written = isPartWritten(draft, part)
-  const canGo = written || !!editing
+  const canMoveOn = written || !!editing
   // Skipping the Obstacle is a deliberate tap, in Next's place while it's empty (spec §4.1)
-  const skip = part === 'obstacle' && !canGo
+  const skip = part === 'obstacle' && !canMoveOn
 
   return (
     <>
@@ -64,7 +64,7 @@ export function PartScreen(props: Props) {
             <PartLine
               value={draft[part] ?? ''}
               onChange={(value) => onChange({ ...draft, [part]: value })}
-              onEnter={() => canGo && onNext(draft)}
+              onEnter={() => canMoveOn && onNext(draft)}
               placeholder={placeholder}
               labelledBy={openingId}
             />
@@ -91,7 +91,7 @@ export function PartScreen(props: Props) {
             Skip for now
           </button>
         ) : (
-          <button type="button" className={primary} {...keepsFocus} onClick={() => onNext(draft)} disabled={!canGo}>
+          <button type="button" className={primary} {...keepsFocus} onClick={() => onNext(draft)} disabled={!canMoveOn}>
             {nextLabel}
           </button>
         )}
