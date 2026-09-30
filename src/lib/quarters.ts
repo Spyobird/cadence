@@ -161,16 +161,21 @@ export function weekdayOf(date: LocalDate): number {
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 
+/** "Nov", for a month counted from 1 */
+const shortMonth = (month: number) => MONTHS[month - 1]!.slice(0, 3)
+/** "Thu" */
+const shortWeekday = (date: LocalDate) => WEEKDAYS[weekdayOf(date)]!.slice(0, 3)
+
 /** "Thursday 12 Nov", as Today's date line reads (spec §6.1) */
 export function weekdayDate(date: LocalDate): string {
   const [, month, day] = ymd(date)
-  return `${WEEKDAYS[weekdayOf(date)]} ${day} ${MONTHS[month - 1]!.slice(0, 3)}`
+  return `${WEEKDAYS[weekdayOf(date)]} ${day} ${shortMonth(month)}`
 }
 
 /** "Mon 12 Oct", or "Mon 12 Oct 2026" with its year */
 export function shortDate(date: LocalDate, withYear = false): string {
   const [year, month, day] = ymd(date)
-  const short = `${WEEKDAYS[weekdayOf(date)]!.slice(0, 3)} ${day} ${MONTHS[month - 1]!.slice(0, 3)}`
+  const short = `${shortWeekday(date)} ${day} ${shortMonth(month)}`
   return withYear ? `${short} ${year}` : short
 }
 
@@ -178,7 +183,7 @@ export function shortDate(date: LocalDate, withYear = false): string {
 export function versionDay(savedOn: LocalDate, quarter: Quarter): string {
   const [, month, day] = ymd(savedOn)
   const dayOfQuarter = dayOf(savedOn, quarter)
-  return `${day} ${MONTHS[month - 1]!.slice(0, 3)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
+  return `${day} ${shortMonth(month)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
 }
 
 /**
@@ -189,7 +194,7 @@ export function whenStarted(startedAt: number, today: LocalDate): string {
   const at = new Date(startedAt)
   const time = `${pad(at.getHours())}:${pad(at.getMinutes())}`
   const on = localDate(at)
-  return on === today ? time : `${WEEKDAYS[weekdayOf(on)]!.slice(0, 3)} ${time}`
+  return on === today ? time : `${shortWeekday(on)} ${time}`
 }
 
 /**
