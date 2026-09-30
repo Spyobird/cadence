@@ -186,6 +186,11 @@ export function versionDay(savedOn: LocalDate, quarter: Quarter): string {
   return `${day} ${shortMonth(month)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
 }
 
+/** "Thu 12 Nov · Day 43", with the year when it isn't today's: a Day's header in the Archive (spec §11) */
+export function archiveDay(date: LocalDate, today: LocalDate): string {
+  return `${shortDate(date, ymd(date)[0] !== ymd(today)[0])} · Day ${dayOf(date, quarterOf(date))}`
+}
+
 /**
  * When an edit started, as "Your unsaved changes from … are still here." reads it: "10:42", or "Thu 10:42" on an
  * earlier Day (spec §8)

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
+  archiveDay,
   currentVersion,
   dayOf,
   daysUntil,
@@ -221,6 +222,18 @@ describe('versionDay (spec §9)', () => {
     ['2026-12-20', '2027-Q1', '20 Dec · before Day 1'],
   ] as const)('a Version saved on %s in %s reads "%s"', (savedOn, quarter, label) => {
     expect(versionDay(savedOn, quarter)).toBe(label)
+  })
+})
+
+describe('archiveDay (spec §11)', () => {
+  it.each([
+    ['2026-11-12', '2026-11-14', 'Thu 12 Nov · Day 43'],
+    ['2026-10-01', '2026-10-01', 'Thu 1 Oct · Day 1'],
+    ['2026-03-31', '2026-11-14', 'Tue 31 Mar · Day 90'],
+    ['2026-12-31', '2027-01-08', 'Thu 31 Dec 2026 · Day 92'],
+    ['2027-01-08', '2027-01-08', 'Fri 8 Jan · Day 8'],
+  ] as const)('a Day on %s, seen on %s, reads "%s"', (date, today, header) => {
+    expect(archiveDay(date, today)).toBe(header)
   })
 })
 
