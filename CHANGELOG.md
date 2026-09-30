@@ -23,6 +23,9 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - The menu shows a gold dot when a backup is due, and its Backup row says when the last one was.
 - A fresh install offers "Restore from a backup" on its first setup screen.
 - A Reflection per Quest per Day, written under the day's Prompt from each Quest's page on Today, and changeable until midnight.
+- Editing a Quest from the menu: tap a part of the read-back to change it on its own screen, then Save. A Quest keeps one Version a day, and a save that changes nothing adds none.
+- An unsaved edit is kept when Cadence is closed, even into the next day, and the menu's Edit says "unsaved changes" until it's saved or discarded.
+- Each Quest's History: how it changed across the Quarter, newest first, with each Version readable in full.
 
 ### Changed
 
