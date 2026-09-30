@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { dropKeyboard, holdKeyboard, useVisibleArea } from '../lib/keyboard'
 import { currentVersion, type Quarter, whenStarted } from '../lib/quarters'
-import { isList, PARTS, type Part, SCAFFOLD } from '../lib/scaffold'
-import { changedParts, NAMES, type Quest, type QuestContent, tidyQuest } from '../lib/store'
+import { isList, type Part, SCAFFOLD } from '../lib/scaffold'
+import { changedParts, emptyPart, NAMES, type Quest, type QuestContent, tidyQuest } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { Banners } from './Banners'
 import { nav, plain, secondary } from './buttons'
@@ -19,12 +19,9 @@ import { Sheet } from './Sheet'
 /** Why Save is off, in the order the owner meets it, or undefined once it can save (spec §8) */
 function whyNotSaved(content: QuestContent, changed: Part[]): string | undefined {
   if (changed.length === 0) return 'No changes yet'
-  const tidy = tidyQuest(content)
-  const empty = PARTS.find((part) => !isList(part) && part !== 'obstacle' && !tidy[part])
-  if (empty) return `${SCAFFOLD[empty].name} can't be empty`
-  const emptyList = PARTS.find((part) => isList(part) && tidy[part].length === 0)
-  if (emptyList) return `Add at least one ${SCAFFOLD[emptyList].item}`
-  return undefined
+  const empty = emptyPart(tidyQuest(content))
+  if (!empty) return undefined
+  return isList(empty) ? `Add at least one ${SCAFFOLD[empty].item}` : `${SCAFFOLD[empty].name} can't be empty`
 }
 
 interface Props {

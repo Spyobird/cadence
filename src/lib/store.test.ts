@@ -4,7 +4,7 @@ import { createStore, entries, get, set, type UseStore } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { flakyPhone } from '../test/phone'
 import { screenFor } from './quarters'
-import { open, type QuestContent, type SetupDraft, StoreError, tidyQuest } from './store'
+import { emptyPart, open, type QuestContent, type SetupDraft, StoreError, tidyQuest } from './store'
 
 let now: Date
 const clock = () => now
@@ -64,6 +64,20 @@ describe('tidyQuest', () => {
       successMetrics: tidy,
       commitments: tidy,
     })
+  })
+})
+
+describe('emptyPart', () => {
+  it.each<[string, Partial<QuestContent>, keyof QuestContent | undefined]>([
+    ['nothing, in a complete Quest', {}, undefined],
+    ['nothing, when only the Obstacle is empty', { obstacle: '' }, undefined],
+    ['an empty part', { whyItMatters: '' }, 'whyItMatters'],
+    ['an empty list', { commitments: [] }, 'commitments'],
+    ['an empty part before an empty list above it (spec §8)', { successMetrics: [], whyItsExciting: '' }, 'whyItsExciting'],
+    ['the first empty part', { whyItsExciting: '', mainQuest: '' }, 'mainQuest'],
+    ['the first empty list', { commitments: [], successMetrics: [] }, 'successMetrics'],
+  ])('names %s', (_, parts, empty) => {
+    expect(emptyPart({ ...quest, ...parts })).toBe(empty)
   })
 })
 

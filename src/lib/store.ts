@@ -210,11 +210,16 @@ export function changedParts(typed: QuestContent, saved: QuestContent): (keyof Q
 /** A Reflection as it's saved, and as it's compared: trimmed at the ends only, keeping its line breaks (spec §4.3) */
 export const tidyReflection = (text: string) => text.trim()
 
-/** Every required part written, and one to five items in each list; only the Obstacle may be empty */
+/** The parts a Quest needs written, in the order Edit names an empty one: each line, then each list (spec §8) */
+const REQUIRED = ['mainQuest', 'whyItMatters', 'whyItsExciting', 'successMetrics', 'commitments'] as const
+
+/** The first part a tidy Quest needs that's empty, or undefined once all are written. Only the Obstacle may be empty. */
+export const emptyPart = (content: QuestContent): keyof QuestContent | undefined =>
+  REQUIRED.find((part) => content[part].length === 0)
+
+/** Every required part written, and one to five items in each list */
 export function isComplete(content: QuestContent): boolean {
-  const { mainQuest, whyItMatters, whyItsExciting, successMetrics, commitments } = content
-  const listOk = (items: string[]) => items.length >= 1 && items.length <= MAX_ITEMS
-  return !!mainQuest && !!whyItMatters && !!whyItsExciting && listOk(successMetrics) && listOk(commitments)
+  return !emptyPart(content) && content.successMetrics.length <= MAX_ITEMS && content.commitments.length <= MAX_ITEMS
 }
 
 /** The Quest tidied, as it's kept, once it's complete: a Quest can only be finished or saved whole (spec §10) */
