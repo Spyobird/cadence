@@ -38,13 +38,15 @@ interface Props {
   onClose: () => void
   onEdit: (quest: Quest) => void
   onHistory: (quest: Quest) => void
+  /** The Archive row */
+  onArchive: () => void
   /** The Backup row */
   onBackup: () => void
   /** A save from the menu didn't happen */
   onFailure: (error: unknown) => void
 }
 
-export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, onBackup, onFailure }: Props) {
+export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, onArchive, onBackup, onFailure }: Props) {
   const { snapshot, today, backupDue } = useCadence()
   return (
     <Sheet label="Menu" onClose={onClose}>
@@ -71,6 +73,13 @@ export function Menu({ quarter, summary, canEdit, onClose, onEdit, onHistory, on
           </span>
         </div>
       ))}
+      <button
+        type="button"
+        onClick={onArchive}
+        className="flex min-h-14 w-full items-center justify-between gap-3 border-t border-line text-left"
+      >
+        Archive
+      </button>
       <button
         type="button"
         onClick={onBackup}

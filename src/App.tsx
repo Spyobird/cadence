@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
+import { Archive } from './components/Archive'
 import { Backup } from './components/Backup'
 import { Edit } from './components/Edit'
 import { History } from './components/History'
@@ -22,6 +23,7 @@ export function App({ store }: { store: Store }) {
  * the screen out from under them: an edit saved after the Quarter's end is refused, and keeps its words (spec §8).
  */
 type Pushed =
+  | { screen: 'archive' }
   | { screen: 'backup'; from: 'today' | 'setup' }
   | { screen: 'edit' | 'history'; quarter: Quarter; quest: Quest }
 
@@ -50,6 +52,8 @@ function Screens() {
       setInSetup(settingUp)
     }
     switch (pushed.screen) {
+      case 'archive':
+        return <Archive onBack={leave} />
       case 'backup':
         return <Backup back={pushed.from === 'today' ? 'Today' : 'Close'} onBack={leave} />
       case 'edit':
@@ -74,6 +78,7 @@ function Screens() {
       quarter={quarter}
       onEdit={(quest) => setPushed({ screen: 'edit', quarter, quest })}
       onHistory={(quest) => setPushed({ screen: 'history', quarter, quest })}
+      onArchive={() => setPushed({ screen: 'archive' })}
       onBackup={() => setPushed({ screen: 'backup', from: 'today' })}
       onReflecting={(open) => setReflectingIn(open ? quarter : undefined)}
     />

@@ -72,13 +72,15 @@ interface Props {
   onEdit: (quest: Quest) => void
   /** The menu's History on a Quest */
   onHistory: (quest: Quest) => void
+  /** The menu's Archive row */
+  onArchive: () => void
   /** The menu's Backup row */
   onBackup: () => void
   /** A Reflection popup opens or closes */
   onReflecting: (open: boolean) => void
 }
 
-export function Today({ quarter, onEdit, onHistory, onBackup, onReflecting }: Props) {
+export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onReflecting }: Props) {
   const { today } = useCadence()
   const words = wordsFor(quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -118,6 +120,7 @@ export function Today({ quarter, onEdit, onHistory, onBackup, onReflecting }: Pr
           onClose={closeMenu}
           onEdit={onEdit}
           onHistory={onHistory}
+          onArchive={onArchive}
           onBackup={onBackup}
           onFailure={(error) => setFailure(failureOf(error))}
         />
