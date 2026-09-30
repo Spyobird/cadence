@@ -13,6 +13,8 @@ import {
   msToMidnight,
   type Quarter,
   quarterOf,
+  reflectionCount,
+  reflectionDays,
   reflectionOn,
   screenFor,
   setupTarget,
@@ -461,3 +463,44 @@ describe('reflectionOn', () => {
   })
 })
 
+describe('reflectionDays and reflectionCount (spec §11, §6.3)', () => {
+  const on = (text: string) => ({ text, prompt: "What's the next step that would move this Quest forward?" })
+  const snapshot: Snapshot = {
+    quarters: {
+      // Stored in any order: Q1 2027 before Q4 2026, and a Quarter's Days out of order
+      '2027-Q1': {
+        versions: { work: [version], life: [version] },
+        reflections: { '2027-01-08': { work: on('Planned the sprint') } },
+      },
+      '2026-Q4': {
+        versions: { work: [version], life: [version] },
+        reflections: {
+          '2026-11-12': { life: on('Ran 5K'), work: on('Pages next') },
+          '2026-12-28': { life: on('A rest week') },
+        },
+      },
+    },
+    setupDrafts: {},
+    editDrafts: {},
+    meta: { schemaVersion: 1, lastBackupAt: null, appearance: 'system' },
+    readOnly: false,
+  }
+
+  it('lists every Day with a Reflection, newest first, across Quarters', () => {
+    expect(reflectionDays(snapshot).map(({ date, reflections }) => [date, Object.keys(reflections).sort()])).toEqual([
+      ['2027-01-08', ['work']],
+      ['2026-12-28', ['life']],
+      ['2026-11-12', ['life', 'work']],
+    ])
+  })
+
+  it('counts each Quest\'s Reflection on each Day', () => {
+    expect(reflectionCount(snapshot)).toBe(4)
+  })
+
+  it('has no Days, and counts none, before any Reflection', () => {
+    const none = snapshotWith({ setUp: ['2026-Q4'] })
+    expect(reflectionDays(none)).toEqual([])
+    expect(reflectionCount(none)).toBe(0)
+  })
+})
