@@ -28,7 +28,7 @@ export function Archive({ onBack }: { onBack: () => void }) {
                 return (
                   reflection && (
                     <div key={quest} className="mt-2.5">
-                      <dt className="text-s font-semibold text-given">{NAMES[quest]}</dt>
+                      <dt className="text-s font-semibold text-faint">{NAMES[quest]}</dt>
                       {/* Its line breaks are kept */}
                       <dd className="whitespace-pre-wrap">{reflection.text}</dd>
                     </div>
