@@ -5,7 +5,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { createStore, update } from 'idb-keyval'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { App } from '../App'
-import { open, type QuarterRecord, type QuestContent, type Store } from '../lib/store'
+import { open, type QuarterRecord, type Quest, type QuestContent, type Store } from '../lib/store'
 import { pretendOpened } from '../test/phone'
 
 let now: Date
@@ -64,12 +64,12 @@ async function reflectAcrossTwoQuarters() {
 /** Thursday's Prompt as an earlier Cadence worded it, before the Prompts changed */
 const OLDER_THURSDAY = 'What stands in your way today?'
 
-/** Leaves 12 Nov's Reflections as that earlier Cadence saved them, each with its copy of Thursday's Prompt */
-const writtenUnderOlderPrompts = () =>
+/** Leaves 12 Nov's Reflections on these Quests as that earlier Cadence saved them, with its copy of Thursday's Prompt */
+const writtenUnderOlderPrompts = (...quests: Quest[]) =>
   update<QuarterRecord>(
     'quarter:2026-Q4',
     (record) => {
-      for (const reflection of Object.values(record!.reflections['2026-11-12']!)) reflection.prompt = OLDER_THURSDAY
+      for (const quest of quests) record!.reflections['2026-11-12']![quest]!.prompt = OLDER_THURSDAY
       return record!
     },
     createStore('cadence', 'kv'),
@@ -127,7 +127,7 @@ describe('the Archive (spec §11)', () => {
 
   it("shows each Day's stored Prompt once, not today's, even after the Prompts are worded differently", async () => {
     await reflectAcrossTwoQuarters()
-    await writtenUnderOlderPrompts()
+    await writtenUnderOlderPrompts('work', 'life')
     // A Saturday
     itIs('2027-01-09T08:00')
     await launch()
@@ -143,6 +143,22 @@ describe('the Archive (spec §11)', () => {
     expect(within(days[2]!).getByText(OLDER_THURSDAY)).toBeInTheDocument()
     expect(screen.queryByText("What's getting in the way right now, and what will you do when it shows up?")).not.toBeInTheDocument()
     expect(screen.queryByText(/^How do you actually feel about your progress/)).not.toBeInTheDocument()
+  })
+
+  it("shows a Reflection's own Prompt when it differs from its Day's, as when Cadence updated between the two", async () => {
+    await reflectAcrossTwoQuarters()
+    // Work was written before an update reworded the Prompts, and Life after it
+    await writtenUnderOlderPrompts('work')
+    itIs('2027-01-09T08:00')
+    await launch()
+    await openArchive()
+
+    const thursday = within(screen.getByRole('main')).getAllByRole('region')[2]!
+    expect(within(thursday).getByText(OLDER_THURSDAY)).toBeInTheDocument()
+    const [workText, lifeText] = within(thursday).getAllByRole('definition')
+    expect(workText).not.toHaveTextContent(OLDER_THURSDAY)
+    expect(lifeText).toHaveTextContent("What's getting in the way right now, and what will you do when it shows up?")
+    expect(lifeText).toHaveTextContent('Ran 5K in 26:40.')
   })
 })
 
