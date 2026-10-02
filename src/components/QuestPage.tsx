@@ -74,7 +74,7 @@ export function QuestPage({ quest, quarter, content, reflectionsNote, onReflect 
 
       {/* The page ends with the Quest's Reflection area (§7.3) */}
       {reflectionsNote ? (
-        <p className="mt-[22px] text-faint">{reflectionsNote}</p>
+        <p className="mt-[22px] text-pretty text-faint">{reflectionsNote}</p>
       ) : (
         onReflect && <TodaysReflection quest={quest} onWrite={onReflect} />
       )}

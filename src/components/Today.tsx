@@ -167,7 +167,7 @@ function BoundaryLine({ quarter, boundary, onSetUp, onBackup }: BoundaryProps) {
     const { next } = boundary
     return (
       <div data-testid="boundary" className="flex flex-col items-center gap-1.5 text-center">
-        <p className="text-given">{labelOf(quarter)} is over. Its Quests are kept as they were.</p>
+        <p className="text-balance text-given">{labelOf(quarter)} is over. Its Quests are kept as they were.</p>
         <button type="button" className={`${primary} mt-1.5`} onClick={() => onSetUp(next)}>
           Set up {labelOf(next)}
         </button>
@@ -181,13 +181,13 @@ function BoundaryLine({ quarter, boundary, onSetUp, onBackup }: BoundaryProps) {
   const { upcoming, daysToGo, setup } = boundary
   if (setup === 'set-up') {
     return (
-      <p data-testid="boundary" className="text-center text-given">
+      <p data-testid="boundary" className="text-center text-balance text-given">
         {labelOf(upcoming)} is set up. It takes over on {dayAndMonth(firstDayOf(upcoming))}.
       </p>
     )
   }
   return (
-    <p data-testid="boundary" className="text-center text-given">
+    <p data-testid="boundary" className="text-center text-balance text-given">
       {labelOf(upcoming)} starts in {daysToGo} {daysToGo === 1 ? 'day' : 'days'}.{' '}
       <button type="button" className="min-h-11 font-semibold text-gold-text" onClick={() => onSetUp(upcoming)}>
         {setup === 'started' ? 'Finish setting it up' : 'Set it up'}
