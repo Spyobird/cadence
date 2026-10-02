@@ -1,7 +1,7 @@
 # Archive
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 07
 
 ## Goal
@@ -26,7 +26,7 @@ The owner can read every Reflection they've written, newest Day first.
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed.
+- [x] Deployed, at `a5d296d` on 2 Oct 2026. The Archive is checked on the phone at slice 10 (§15.2).
 - [x] `CHANGELOG.md`: "Added: the Archive of Reflections".
 
 ## Build notes
