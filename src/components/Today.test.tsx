@@ -106,15 +106,6 @@ describe('the day', () => {
   })
 })
 
-describe('once the Quarter has ended (the rest is slice 9)', () => {
-  it('shows the ring full, under today\'s date (spec §6.1, §6.4)', async () => {
-    itIs('2027-01-02T10:00')
-    await launch()
-    expect(ticks(screen.getByRole('img', { name: 'Q4 2026 has ended' }))).toEqual({ count: 92, passed: 92, today: undefined })
-    expect(screen.getByText('Saturday 2 Jan')).toBeInTheDocument()
-  })
-})
-
 it('warns across the top of Today when opened in a Safari tab (spec §6.4)', async () => {
   pretendOpened('safari tab')
   itIs('2026-09-29T10:00')

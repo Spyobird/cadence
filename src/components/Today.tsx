@@ -12,11 +12,13 @@ import {
   lengthOf,
   type LocalDate,
   type Quarter,
+  quarterOf,
   standingIn,
   weekdayDate,
 } from '../lib/quarters'
 import type { Quest } from '../lib/store'
 import { Banners } from './Banners'
+import { primary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { Menu, MenuButton } from './Menu'
 import { Pages } from './Pages'
@@ -67,12 +69,14 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
       }
     }
     case 'past':
-      // Slice 9 finishes the ended state (§6.4). Until then the ring is full, and reads as the prototype's does.
       return {
         dateLine: weekdayDate(today),
         summary: `Ended ${weekdayDate(lastDayOf(quarter))}`,
+        // The Current Quarter is the one the ended state sets up (§3.1)
+        reflectionsNote: `Reflecting starts again once ${labelOf(quarterOf(today))} is set up.`,
         canReflect: false,
         canEdit: false,
+        // The ring is full
         ring: { passed: length, numeral: length, caption: 'ended', label: `${labelOf(quarter)} has ended` },
       }
   }
@@ -90,7 +94,7 @@ interface Props {
   onBackup: () => void
   /** A Reflection popup opens or closes */
   onReflecting: (open: boolean) => void
-  /** Opens setup on a Quarter: "Set it up" in the last 14 days (spec §6.4) */
+  /** Opens setup on a Quarter: "Set it up" in the last 14 days, or "Set up Q1 2027" once a Quarter has ended (spec §6.4) */
   onSetUp: (quarter: Quarter) => void
 }
 
@@ -120,7 +124,7 @@ export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onRefle
           <MenuButton ref={menuButton} onOpen={() => setMenuOpen(true)} />
           <Ring quarter={quarter} face={words.ring} />
           <p className="text-given tabular-nums">{words.dateLine}</p>
-          {boundary && <BoundaryLine boundary={boundary} onSetUp={onSetUp} />}
+          {boundary && <BoundaryLine quarter={quarter} boundary={boundary} onSetUp={onSetUp} onBackup={onBackup} />}
         </header>
         <Pages
           quarter={quarter}
@@ -149,9 +153,31 @@ export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onRefle
   )
 }
 
-/** At most one quiet line under the date, at a Quarter's boundary (spec §6.4) */
-function BoundaryLine({ boundary, onSetUp }: { boundary: Boundary; onSetUp: (quarter: Quarter) => void }) {
-  if (boundary.at === 'ended') return null
+interface BoundaryProps {
+  /** The Quarter on Today */
+  quarter: Quarter
+  boundary: Boundary
+  onSetUp: (quarter: Quarter) => void
+  onBackup: () => void
+}
+
+/** At most one quiet line under the date at a Quarter's boundary, or one action once it has ended (spec §6.4) */
+function BoundaryLine({ quarter, boundary, onSetUp, onBackup }: BoundaryProps) {
+  if (boundary.at === 'ended') {
+    const { next } = boundary
+    return (
+      <div data-testid="boundary" className="flex flex-col items-center gap-1.5 text-center">
+        <p className="text-given">{labelOf(quarter)} is over. Its Quests are kept as they were.</p>
+        <button type="button" className={`${primary} mt-1.5`} onClick={() => onSetUp(next)}>
+          Set up {labelOf(next)}
+        </button>
+        {/* Not gold: the primary button is the one gold action on a screen (DESIGN.md) */}
+        <button type="button" className="min-h-11 text-given underline decoration-line underline-offset-4" onClick={onBackup}>
+          Export a backup first
+        </button>
+      </div>
+    )
+  }
   const { upcoming, daysToGo, setup } = boundary
   if (setup === 'set-up') {
     return (

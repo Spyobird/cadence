@@ -48,7 +48,18 @@ async function launch() {
 /** The quiet line under the date on Today */
 const boundaryLine = () => screen.getByTestId('boundary')
 const button = (name: string) => screen.getByRole('button', { name })
+const page = (name: 'Work' | 'Life') => within(screen.getByRole('tabpanel', { name }))
 const mainQuestField = () => screen.getByRole('textbox', { name: 'My Work Main Quest is to' })
+
+/** The ring's ticks, one per Day, by colour */
+function ticks(ring: HTMLElement) {
+  const strokes = Array.from(ring.querySelectorAll('line'), (line) => line.getAttribute('stroke'))
+  return {
+    count: strokes.length,
+    passed: strokes.filter((stroke) => stroke === 'var(--gold-dim)').length,
+    today: strokes.indexOf('var(--gold)') + 1 || undefined,
+  }
+}
 
 beforeEach(async () => {
   indexedDB = new IDBFactory()
@@ -137,5 +148,88 @@ describe('setup started from Today (spec §5.4)', () => {
     await user.click(button('Go to Today'))
     expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
     expect(boundaryLine()).toHaveTextContent('Q1 2027 is set up. It takes over on 1 Jan.')
+  })
+})
+
+describe('the ended state (spec §6.4)', () => {
+  beforeEach(() => itIs('2027-01-02T10:00'))
+
+  it('shows the ring full under today\'s date, says the Quarter is over, and offers to set up the next, or export first', async () => {
+    await launch()
+    expect(ticks(screen.getByRole('img', { name: 'Q4 2026 has ended' }))).toEqual({ count: 92, passed: 92, today: undefined })
+    expect(screen.getByText('Saturday 2 Jan')).toBeInTheDocument()
+    const boundary = within(boundaryLine())
+    expect(boundary.getByText('Q4 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
+    expect(boundary.getByRole('button', { name: 'Set up Q1 2027' })).toBeInTheDocument()
+    expect(boundary.getByRole('button', { name: 'Export a backup first' })).toBeInTheDocument()
+    for (const name of ['Work', 'Life'] as const) {
+      expect(page(name).getByText('Reflecting starts again once Q1 2027 is set up.')).toBeVisible()
+    }
+    expect(screen.queryByRole('button', { name: /today's Reflection/ })).not.toBeInTheDocument()
+  })
+
+  it('opens a blank setup for Q1 2027 from "Set up Q1 2027", with no Close, and resumes it once something is typed', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Set up Q1 2027'))
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('')
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    await user.type(mainQuestField(), 'write the book')
+    await aMomentLater()
+    cleanup()
+
+    await launch()
+    expect(screen.getByText('Picked up where you left off.')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('write the book')
+  })
+
+  it('opens the Backup screen from "Export a backup first", and comes back', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Export a backup first'))
+    expect(screen.getByRole('heading', { name: 'Backup' })).toBeInTheDocument()
+    await user.click(button('Today'))
+    expect(screen.getByText('Q4 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
+  })
+
+  it('makes a backup due, though the last was made two days ago, before the Quarter ended (spec §6.3)', async () => {
+    await (await open(() => new Date('2026-12-31T22:00'))).markBackedUp()
+    await launch()
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveAccessibleDescription('A backup is due')
+  })
+
+  it('shows the latest set-up Quarter when a Quarter was skipped, and sets up the Current one', async () => {
+    const user = userEvent.setup()
+    indexedDB = new IDBFactory()
+    await setUp('2026-Q3', '2026-06-29T10:00')
+    itIs('2027-01-15T10:00')
+    await launch()
+    expect(ticks(screen.getByRole('img', { name: 'Q3 2026 has ended' }))).toEqual({ count: 92, passed: 92, today: undefined })
+    expect(screen.getByText('Q3 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
+    expect(page('Work').getByText('Reflecting starts again once Q1 2027 is set up.')).toBeVisible()
+    await user.click(button('Set up Q1 2027'))
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+  })
+
+  it('never resumes a Draft frozen at its Quarter\'s end, and keeps it stored (spec §3.1)', async () => {
+    const user = userEvent.setup()
+    indexedDB = new IDBFactory()
+    await setUp('2026-Q3', '2026-06-29T10:00')
+    // On 20 Dec, with Q4 skipped so far, setup for Q4 is started from the ended state, and left
+    itIs('2026-12-20T10:00')
+    await launch()
+    await user.click(button('Set up Q4 2026'))
+    await user.type(mainQuestField(), 'write the book')
+    await aMomentLater()
+    cleanup()
+
+    itIs('2027-01-02T10:00')
+    await launch()
+    expect(screen.getByText('Q3 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
+    await user.click(button('Set up Q1 2027'))
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('')
+    expect((await open(() => now)).snapshot().setupDrafts['2026-Q4']?.work.mainQuest).toBe('write the book')
   })
 })
