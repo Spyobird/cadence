@@ -8,7 +8,7 @@ import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { open, type QuestContent } from './lib/store'
-import { aMomentLater, pretendOpened } from './test/phone'
+import { aMomentLater, pretendOpened, slowPhone } from './test/phone'
 
 let now: Date
 /** Sets the phone's clock, in local time: "2026-12-20T10:00" */
@@ -41,8 +41,8 @@ async function setUp(quarter: '2026-Q3' | '2026-Q4' | '2027-Q1', on: string) {
 }
 
 /** Opens Cadence as the phone would: the real app over the real store */
-async function launch() {
-  return render(<App store={await open(() => now)} />)
+async function launch(connect?: Parameters<typeof open>[1]) {
+  return render(<App store={await open(() => now, connect)} />)
 }
 
 /** The quiet line under the date on Today */
@@ -108,10 +108,21 @@ describe('setup started from Today (spec §5.4)', () => {
     await user.type(mainQuestField(), 'write the book')
     await user.click(button('Close'))
 
-    expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
     expect(boundaryLine()).toHaveTextContent('Q1 2027 starts in 12 days. Finish setting it up')
     await user.click(within(boundaryLine()).getByRole('button', { name: 'Finish setting it up' }))
     expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('write the book')
+  })
+
+  it('closes once every word typed has been saved, so none is lost on a slow phone', async () => {
+    const user = userEvent.setup()
+    await launch(slowPhone())
+    await user.click(button('Set it up'))
+    await user.type(mainQuestField(), 'write the book')
+    await user.click(button('Close'))
+
+    await user.click(await screen.findByRole('button', { name: 'Finish setting it up' }))
     expect(mainQuestField()).toHaveValue('write the book')
   })
 

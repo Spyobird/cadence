@@ -1,6 +1,6 @@
 // Setup: a Quarter's two Quests, Work then Life, one Scaffold part per screen, then a read-back (spec §5)
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
 import { dropKeyboard, holdKeyboard, keepsFocus, useVisibleArea } from '../lib/keyboard'
 import { isFinished, labelOf, type Quarter, spanOf } from '../lib/quarters'
@@ -80,6 +80,11 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
   }, [setUp])
 
   const showFailure = (error: unknown) => setFailure(failureOf(error))
+  /**
+   * The Draft's last save, true once it has landed or when there's no message to show. Each save holds every word,
+   * so the last one decides whether Close can leave without losing any.
+   */
+  const lastSave = useRef<Promise<boolean>>(Promise.resolve(true))
 
   const { quest, part } = draft.at
   const questDraft = draft[quest]
@@ -89,7 +94,20 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
   function save(next: SetupDraft) {
     setDraft(next)
     setPickedUp(false)
-    saveSetupDraft(quarter, next).catch(showFailure)
+    lastSave.current = saveSetupDraft(quarter, next).then(
+      () => true,
+      (error: unknown) => {
+        const message = failureOf(error)
+        setFailure(message)
+        return message === null
+      },
+    )
+  }
+
+  /** Back to Today once every word typed has landed in the Draft. A save that failed stays, to say so. */
+  async function close() {
+    dropKeyboard()
+    if (await lastSave.current) onClose?.()
   }
 
   function moveTo(to: Part | 'readBack', next: QuestDraft = questDraft) {
@@ -178,10 +196,7 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
             type="button"
             className={nav}
             disabled={finishing}
-            onClick={() => {
-              dropKeyboard()
-              onClose()
-            }}
+            onClick={close}
           >
             Close
           </button>

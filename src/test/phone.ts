@@ -33,6 +33,15 @@ export function flakyPhone() {
   return { connect, failNextWrites: (...names: string[]) => failures.push(...names) }
 }
 
+/** Connections to the phone's storage whose writes land a moment late, as a busy iPhone's can */
+export function slowPhone(ms = 20) {
+  return (): UseStore => {
+    const kv = createStore('cadence', 'kv')
+    return (mode, callback) =>
+      mode === 'readwrite' ? new Promise((resolve) => setTimeout(resolve, ms)).then(() => kv(mode, callback)) : kv(mode, callback)
+  }
+}
+
 /** A moment after the last keystroke or tap: long enough for queued saves to land */
 export const aMomentLater = () => new Promise((resolve) => setTimeout(resolve, 50))
 
