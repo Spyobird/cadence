@@ -248,6 +248,24 @@ describe('Edit (spec §8)', () => {
     expect(stored.editDrafts['2026-Q4']?.work?.content.mainQuest).toBe('ship the redesigned onboarding flow at last')
   })
 
+  it("refuses what's typed on a part's screen after the Quarter's last midnight, keeping the words, and the Draft as it stood", async () => {
+    itIs('2026-12-31T23:58')
+    await launch()
+    const user = await openEdit('Work')
+    await user.click(part('My Work Main Quest is to'))
+    await user.keyboard(' at last')
+
+    itIs('2027-01-01T00:01')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    await user.keyboard('!')
+    const refused = await screen.findByRole('alertdialog')
+    expect(refused).toHaveTextContent("Q4 2026 ended at midnight, so this can't be saved.")
+    await user.click(within(refused).getByRole('button', { name: 'OK' }))
+    expect(screen.getByRole('textbox', { name: 'My Work Main Quest is to' })).toHaveValue('ship the redesigned onboarding flow at last!')
+
+    expect((await reopened()).editDrafts['2026-Q4']?.work?.content.mainQuest).toBe('ship the redesigned onboarding flow at last')
+  })
+
   it.each([
     ['once the Quarter has ended (spec §6.4)', () => itIs('2027-01-02T10:00')],
     ['for data from a newer Cadence (spec §13.4)', pretendNewerCadence],
