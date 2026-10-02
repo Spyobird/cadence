@@ -13,10 +13,10 @@ export function overriddenClock(search: string, real: () => Date): () => Date {
   if (!isLocalDate(date) || (time !== undefined && !TIME.test(time)) || rest.length > 0) return real
   const now = real()
   const [year, month, day] = date.split('-').map(Number) as [number, number, number]
-  const [hours, minutes] = time ? time.split(':').map(Number) : [now.getHours(), now.getMinutes()]
-  const start = time
-    ? new Date(year, month - 1, day, hours, minutes)
-    : new Date(year, month - 1, day, hours, minutes, now.getSeconds(), now.getMilliseconds())
-  const offset = start.getTime() - now.getTime()
+  // At the time asked for, or else at the real time of day
+  const [hours, minutes, seconds, ms] = time
+    ? [...time.split(':').map(Number), 0, 0]
+    : [now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()]
+  const offset = new Date(year, month - 1, day, hours, minutes, seconds, ms).getTime() - now.getTime()
   return () => new Date(real().getTime() + offset)
 }

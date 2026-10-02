@@ -15,3 +15,6 @@ export const plain = 'min-h-12 px-1.5 text-ink disabled:text-faint'
 
 /** A small pill in a sheet's row, like the menu's Edit and History */
 export const chip = 'min-h-11 rounded-full bg-raise px-3.5 font-semibold text-ink'
+
+/** A quiet text link, underlined in --line, like "Restore from a backup". Its colour is the caller's. */
+export const link = 'min-h-11 text-m underline decoration-line underline-offset-4'

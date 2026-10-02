@@ -19,7 +19,7 @@ import {
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { Banners } from './Banners'
-import { plain, primary } from './buttons'
+import { link, plain, primary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { Bar, PartScreen, Words } from './PartScreen'
 import { ReadBack } from './ReadBack'
@@ -249,7 +249,7 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
             nothingStored && (
               <button
                 type="button"
-                className="mt-2 min-h-11 text-left text-m text-faint underline decoration-line underline-offset-4"
+                className={`${link} mt-2 text-left text-faint`}
                 onClick={onRestore}
               >
                 Restore from a backup

@@ -45,8 +45,10 @@ async function launch(connect?: Parameters<typeof open>[1]) {
   return render(<App store={await open(() => now, connect)} />)
 }
 
-/** The quiet line under the date on Today */
-const boundaryLine = () => screen.getByTestId('boundary')
+/** The quiet line under the date on Today, by its words before any link */
+const line = (words: string) => screen.getByText(words)
+/** Any of the boundary lines */
+const ANY_LINE = /starts in|is set up\.|is over\./
 const button = (name: string) => screen.getByRole('button', { name })
 const page = (name: 'Work' | 'Life') => within(screen.getByRole('tabpanel', { name }))
 const mainQuestField = () => screen.getByRole('textbox', { name: 'My Work Main Quest is to' })
@@ -72,26 +74,25 @@ describe('the last 14 days (spec §6.4)', () => {
     ['2026-12-18T10:00', 'Q1 2027 starts in 14 days.'],
     ['2026-12-20T10:00', 'Q1 2027 starts in 12 days.'],
     ['2026-12-31T10:00', 'Q1 2027 starts in 1 day.'],
-  ])('on %s, read "%s Set it up" under the date', async (when, line) => {
+  ])('on %s, read "%s Set it up" under the date', async (when, words) => {
     itIs(when)
     await launch()
-    expect(boundaryLine()).toHaveTextContent(`${line} Set it up`)
-    expect(within(boundaryLine()).getByRole('button', { name: 'Set it up' })).toBeInTheDocument()
+    expect(line(words)).toHaveTextContent(`${words} Set it up`)
+    expect(within(line(words)).getByRole('button', { name: 'Set it up' })).toBeInTheDocument()
   })
 
   it('read "Q1 2027 is set up. It takes over on 1 Jan." once it is, with nothing to tap', async () => {
     await setUp('2027-Q1', '2026-12-19T10:00')
     itIs('2026-12-20T10:00')
     await launch()
-    expect(boundaryLine()).toHaveTextContent(/^Q1 2027 is set up. It takes over on 1 Jan.$/)
-    expect(within(boundaryLine()).queryByRole('button')).not.toBeInTheDocument()
+    expect(within(line('Q1 2027 is set up. It takes over on 1 Jan.')).queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
   })
 
   it('say nothing under the date before them', async () => {
     itIs('2026-12-17T10:00')
     await launch()
-    expect(screen.queryByTestId('boundary')).not.toBeInTheDocument()
+    expect(screen.queryByText(ANY_LINE)).not.toBeInTheDocument()
   })
 })
 
@@ -109,8 +110,8 @@ describe('setup started from Today (spec §5.4)', () => {
     await user.click(button('Close'))
 
     expect(await screen.findByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
-    expect(boundaryLine()).toHaveTextContent('Q1 2027 starts in 12 days. Finish setting it up')
-    await user.click(within(boundaryLine()).getByRole('button', { name: 'Finish setting it up' }))
+    expect(line('Q1 2027 starts in 12 days.')).toHaveTextContent('Q1 2027 starts in 12 days. Finish setting it up')
+    await user.click(button('Finish setting it up'))
     expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
     expect(mainQuestField()).toHaveValue('write the book')
   })
@@ -175,7 +176,7 @@ describe('setup started from Today (spec §5.4)', () => {
     expect(await screen.findByText('Q1 2027 is set up')).toBeInTheDocument()
     await user.click(button('Go to Today'))
     expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
-    expect(boundaryLine()).toHaveTextContent('Q1 2027 is set up. It takes over on 1 Jan.')
+    expect(line('Q1 2027 is set up. It takes over on 1 Jan.')).toBeInTheDocument()
   })
 })
 
@@ -186,10 +187,9 @@ describe('the ended state (spec §6.4)', () => {
     await launch()
     expect(ticks(screen.getByRole('img', { name: 'Q4 2026 has ended' }))).toEqual({ count: 92, passed: 92, today: undefined })
     expect(screen.getByText('Saturday 2 Jan')).toBeInTheDocument()
-    const boundary = within(boundaryLine())
-    expect(boundary.getByText('Q4 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
-    expect(boundary.getByRole('button', { name: 'Set up Q1 2027' })).toBeInTheDocument()
-    expect(boundary.getByRole('button', { name: 'Export a backup first' })).toBeInTheDocument()
+    expect(line('Q4 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
+    expect(button('Set up Q1 2027')).toBeInTheDocument()
+    expect(button('Export a backup first')).toBeInTheDocument()
     for (const name of ['Work', 'Life'] as const) {
       expect(page(name).getByText('Reflecting starts again once Q1 2027 is set up.')).toBeVisible()
     }
@@ -278,7 +278,7 @@ describe('the handover at midnight on 1 Jan (spec §3.1)', () => {
     await openOnTheLastDay()
     expect(screen.getByRole('img', { name: 'Day 1 of 90' })).toBeInTheDocument()
     expect(screen.getByText('Friday 1 Jan')).toBeInTheDocument()
-    expect(screen.queryByTestId('boundary')).not.toBeInTheDocument()
+    expect(screen.queryByText(ANY_LINE)).not.toBeInTheDocument()
     expect(page('Work').getByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
   })
 

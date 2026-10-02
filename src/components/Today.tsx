@@ -18,7 +18,7 @@ import {
 } from '../lib/quarters'
 import type { Quest } from '../lib/store'
 import { Banners } from './Banners'
-import { primary } from './buttons'
+import { link, primary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { Menu, MenuButton } from './Menu'
 import { Pages } from './Pages'
@@ -76,7 +76,6 @@ function wordsFor(quarter: Quarter, today: LocalDate): DayWords {
         reflectionsNote: `Reflecting starts again once ${labelOf(quarterOf(today))} is set up.`,
         canReflect: false,
         canEdit: false,
-        // The ring is full
         ring: { passed: length, numeral: length, caption: 'ended', label: `${labelOf(quarter)} has ended` },
       }
   }
@@ -166,32 +165,31 @@ function BoundaryLine({ quarter, boundary, onSetUp, onBackup }: BoundaryProps) {
   if (boundary.at === 'ended') {
     const { next } = boundary
     return (
-      <div data-testid="boundary" className="flex flex-col items-center gap-1.5 text-center">
+      <div className="flex flex-col items-center gap-1.5 text-center">
         <p className="text-balance text-given">{labelOf(quarter)} is over. Its Quests are kept as they were.</p>
         <button type="button" className={`${primary} mt-1.5`} onClick={() => onSetUp(next)}>
           Set up {labelOf(next)}
         </button>
         {/* Not gold: the primary button is the one gold action on a screen (DESIGN.md) */}
-        <button type="button" className="min-h-11 text-given underline decoration-line underline-offset-4" onClick={onBackup}>
+        <button type="button" className={`${link} text-given`} onClick={onBackup}>
           Export a backup first
         </button>
       </div>
     )
   }
   const { upcoming, daysToGo, setup } = boundary
-  if (setup === 'set-up') {
-    return (
-      <p data-testid="boundary" className="text-center text-balance text-given">
-        {labelOf(upcoming)} is set up. It takes over on {dayAndMonth(firstDayOf(upcoming))}.
-      </p>
-    )
-  }
   return (
-    <p data-testid="boundary" className="text-center text-balance text-given">
-      {labelOf(upcoming)} starts in {daysToGo} {daysToGo === 1 ? 'day' : 'days'}.{' '}
-      <button type="button" className="min-h-11 font-semibold text-gold-text" onClick={() => onSetUp(upcoming)}>
-        {setup === 'started' ? 'Finish setting it up' : 'Set it up'}
-      </button>
+    <p className="text-center text-balance text-given">
+      {setup === 'set-up' ? (
+        `${labelOf(upcoming)} is set up. It takes over on ${dayAndMonth(firstDayOf(upcoming))}.`
+      ) : (
+        <>
+          {labelOf(upcoming)} starts in {daysToGo} {daysToGo === 1 ? 'day' : 'days'}.{' '}
+          <button type="button" className="min-h-11 font-semibold text-gold-text" onClick={() => onSetUp(upcoming)}>
+            {setup === 'started' ? 'Finish setting it up' : 'Set it up'}
+          </button>
+        </>
+      )}
     </p>
   )
 }

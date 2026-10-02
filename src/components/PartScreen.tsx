@@ -6,7 +6,7 @@ import { keepsFocus } from '../lib/keyboard'
 import type { Quarter } from '../lib/quarters'
 import { isList, isPartWritten, type Part, SCAFFOLD, STUCK_QUESTIONS, withEnd } from '../lib/scaffold'
 import type { Quest, QuestDraft } from '../lib/store'
-import { plain, primary, secondary } from './buttons'
+import { link, plain, primary, secondary } from './buttons'
 import { ListField, PartLine } from './Fields'
 
 interface Props {
@@ -108,7 +108,7 @@ function Stuck({ quest, quarter }: { quest: Quest; quarter: Quarter }) {
       <button
         type="button"
         aria-expanded={open}
-        className="min-h-11 text-left text-m text-given underline decoration-line underline-offset-4"
+        className={`${link} text-left text-given`}
         {...keepsFocus}
         onClick={() => setOpen(!open)}
       >
