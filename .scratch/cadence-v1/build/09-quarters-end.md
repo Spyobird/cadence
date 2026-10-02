@@ -1,7 +1,7 @@
 # Quarter's end
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by: 08
 
 ## Goal
@@ -29,7 +29,7 @@ Cadence handles the end of a Quarter: offering setup of the next one in the last
 ## Done when
 
 - [x] The tests above pass, along with `tsc`.
-- [ ] Deployed.
+- [x] Deployed, at b644009 on 2 Oct 2026. The boundary states are walked on the phone at slice 10 (§15.2).
 - [x] `CHANGELOG.md`: "Added: setting up the next Quarter, and the end of a Quarter".
 
 ## Build notes
