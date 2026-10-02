@@ -2,7 +2,19 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { useCadence } from '../hooks/useCadence'
-import { firstDayOf, labelOf, lastDayOf, lengthOf, type LocalDate, type Quarter, standingIn, weekdayDate } from '../lib/quarters'
+import {
+  type Boundary,
+  boundaryOf,
+  dayAndMonth,
+  firstDayOf,
+  labelOf,
+  lastDayOf,
+  lengthOf,
+  type LocalDate,
+  type Quarter,
+  standingIn,
+  weekdayDate,
+} from '../lib/quarters'
 import type { Quest } from '../lib/store'
 import { Banners } from './Banners'
 import { FailedSave, failureOf } from './FailedSave'
@@ -78,11 +90,14 @@ interface Props {
   onBackup: () => void
   /** A Reflection popup opens or closes */
   onReflecting: (open: boolean) => void
+  /** Opens setup on a Quarter: "Set it up" in the last 14 days (spec §6.4) */
+  onSetUp: (quarter: Quarter) => void
 }
 
-export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onReflecting }: Props) {
-  const { today } = useCadence()
+export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onReflecting, onSetUp }: Props) {
+  const { snapshot, today } = useCadence()
   const words = wordsFor(quarter, today)
+  const boundary = boundaryOf(snapshot, quarter, today)
   const [menuOpen, setMenuOpen] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   /** The Quest whose Reflection popup is open */
@@ -105,6 +120,7 @@ export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onRefle
           <MenuButton ref={menuButton} onOpen={() => setMenuOpen(true)} />
           <Ring quarter={quarter} face={words.ring} />
           <p className="text-given tabular-nums">{words.dateLine}</p>
+          {boundary && <BoundaryLine boundary={boundary} onSetUp={onSetUp} />}
         </header>
         <Pages
           quarter={quarter}
@@ -130,5 +146,26 @@ export function Today({ quarter, onEdit, onHistory, onArchive, onBackup, onRefle
       )}
       {failure && <FailedSave message={failure} onClose={() => setFailure(null)} />}
     </>
+  )
+}
+
+/** At most one quiet line under the date, at a Quarter's boundary (spec §6.4) */
+function BoundaryLine({ boundary, onSetUp }: { boundary: Boundary; onSetUp: (quarter: Quarter) => void }) {
+  if (boundary.at === 'ended') return null
+  const { upcoming, daysToGo, setup } = boundary
+  if (setup === 'set-up') {
+    return (
+      <p data-testid="boundary" className="text-center text-given">
+        {labelOf(upcoming)} is set up. It takes over on {dayAndMonth(firstDayOf(upcoming))}.
+      </p>
+    )
+  }
+  return (
+    <p data-testid="boundary" className="text-center text-given">
+      {labelOf(upcoming)} starts in {daysToGo} {daysToGo === 1 ? 'day' : 'days'}.{' '}
+      <button type="button" className="min-h-11 font-semibold text-gold-text" onClick={() => onSetUp(upcoming)}>
+        {setup === 'started' ? 'Finish setting it up' : 'Set it up'}
+      </button>
+    </p>
   )
 }

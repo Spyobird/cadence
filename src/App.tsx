@@ -38,6 +38,12 @@ function Screens() {
   // Finishing Life moves screenFor on, but setup stays on screen with "Q4 2026 is set up" until the owner leaves it
   const [inSetup, setInSetup] = useState(settingUp)
   if (settingUp && !inSetup) setInSetup(true)
+  /** The Quarter setup was opened on from Today, while screenFor still says Today (spec §5.4) */
+  const [openedOn, setOpenedOn] = useState<Quarter>()
+  const toToday = () => {
+    setInSetup(false)
+    setOpenedOn(undefined)
+  }
   const [pushed, setPushed] = useState<Pushed>()
   /**
    * The Quarter on Today while a Reflection popup is open there: midnight doesn't move the screen out from under it,
@@ -66,8 +72,10 @@ function Screens() {
   if (inSetup && !reflectingIn) {
     return (
       <Setup
-        quarter={screen.quarter}
-        onToday={() => setInSetup(false)}
+        quarter={openedOn ?? screen.quarter}
+        onToday={toToday}
+        // Close goes back to Today while the Current Quarter is set up, and the Draft stays (spec §5.4)
+        onClose={screen.name === 'running' ? toToday : undefined}
         onRestore={() => setPushed({ screen: 'backup', from: 'setup' })}
       />
     )
@@ -81,6 +89,10 @@ function Screens() {
       onArchive={() => setPushed({ screen: 'archive' })}
       onBackup={() => setPushed({ screen: 'backup', from: 'today' })}
       onReflecting={(open) => setReflectingIn(open ? quarter : undefined)}
+      onSetUp={(on) => {
+        setOpenedOn(on)
+        setInSetup(true)
+      }}
     />
   )
 }

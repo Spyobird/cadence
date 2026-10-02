@@ -1,0 +1,141 @@
+// A Quarter's end (spec §3.1, §5.4, §6.4): setting up the next Quarter in the last 14 days, handing over on 1 Jan,
+// and the ended state when nothing new is set up
+
+import 'fake-indexeddb/auto'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { IDBFactory } from 'fake-indexeddb'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { App } from './App'
+import { open, type QuestContent } from './lib/store'
+import { aMomentLater, pretendOpened } from './test/phone'
+
+let now: Date
+/** Sets the phone's clock, in local time: "2026-12-20T10:00" */
+const itIs = (when: string) => {
+  now = new Date(when)
+}
+
+const work: QuestContent = {
+  mainQuest: 'ship the redesigned onboarding flow',
+  whyItMatters: 'stop us losing a third of new sign-ups',
+  successMetrics: ['the new onboarding live for every sign-up'],
+  whyItsExciting: "it's the first project I've led end to end",
+  obstacle: '',
+  commitments: ['Two hours of deep work every Monday morning'],
+}
+const life: QuestContent = {
+  mainQuest: 'run 5K in under 25 minutes',
+  whyItMatters: 'prove I can keep a promise to my own body',
+  successMetrics: ['an official parkrun 5K under 25:00'],
+  whyItsExciting: "I've never thought of myself as a runner",
+  obstacle: '',
+  commitments: ['Run every Tuesday, Thursday and Saturday at 6:30am'],
+}
+
+/** Sets up a Quarter's two Quests, on a day its setup was open */
+async function setUp(quarter: '2026-Q3' | '2026-Q4' | '2027-Q1', on: string) {
+  const store = await open(() => new Date(on))
+  await store.finishQuest(quarter, 'work', work)
+  await store.finishQuest(quarter, 'life', life)
+}
+
+/** Opens Cadence as the phone would: the real app over the real store */
+async function launch() {
+  return render(<App store={await open(() => now)} />)
+}
+
+/** The quiet line under the date on Today */
+const boundaryLine = () => screen.getByTestId('boundary')
+const button = (name: string) => screen.getByRole('button', { name })
+const mainQuestField = () => screen.getByRole('textbox', { name: 'My Work Main Quest is to' })
+
+beforeEach(async () => {
+  indexedDB = new IDBFactory()
+  pretendOpened('home screen (iOS)')
+  await setUp('2026-Q4', '2026-09-29T10:00')
+})
+
+describe('the last 14 days (spec §6.4)', () => {
+  it.each([
+    ['2026-12-18T10:00', 'Q1 2027 starts in 14 days.'],
+    ['2026-12-20T10:00', 'Q1 2027 starts in 12 days.'],
+    ['2026-12-31T10:00', 'Q1 2027 starts in 1 day.'],
+  ])('on %s, read "%s Set it up" under the date', async (when, line) => {
+    itIs(when)
+    await launch()
+    expect(boundaryLine()).toHaveTextContent(`${line} Set it up`)
+    expect(within(boundaryLine()).getByRole('button', { name: 'Set it up' })).toBeInTheDocument()
+  })
+
+  it('read "Q1 2027 is set up. It takes over on 1 Jan." once it is, with nothing to tap', async () => {
+    await setUp('2027-Q1', '2026-12-19T10:00')
+    itIs('2026-12-20T10:00')
+    await launch()
+    expect(boundaryLine()).toHaveTextContent(/^Q1 2027 is set up. It takes over on 1 Jan.$/)
+    expect(within(boundaryLine()).queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
+  })
+
+  it('say nothing under the date before them', async () => {
+    itIs('2026-12-17T10:00')
+    await launch()
+    expect(screen.queryByTestId('boundary')).not.toBeInTheDocument()
+  })
+})
+
+describe('setup started from Today (spec §5.4)', () => {
+  beforeEach(() => itIs('2026-12-20T10:00'))
+
+  it('opens on the Upcoming Quarter from "Set it up", with Close back to Today, which then reads "Finish setting it up"', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Set it up'))
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(screen.getByText('Work Quest, part 1 of 6')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Switch to/ })).not.toBeInTheDocument()
+    await user.type(mainQuestField(), 'write the book')
+    await user.click(button('Close'))
+
+    expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
+    expect(boundaryLine()).toHaveTextContent('Q1 2027 starts in 12 days. Finish setting it up')
+    await user.click(within(boundaryLine()).getByRole('button', { name: 'Finish setting it up' }))
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('write the book')
+  })
+
+  it('keeps the Draft when Cadence is closed, and still opens on Today, since the Current Quarter is running', async () => {
+    const user = userEvent.setup()
+    await launch()
+    await user.click(button('Set it up'))
+    await user.type(mainQuestField(), 'write the book')
+    await aMomentLater()
+    cleanup()
+
+    await launch()
+    expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
+    await user.click(button('Finish setting it up'))
+    expect(screen.getByText('Picked up where you left off.')).toBeInTheDocument()
+    expect(mainQuestField()).toHaveValue('write the book')
+  })
+
+  it('finishes the Upcoming Quarter, and "Go to Today" comes back to the Current one, which says so', async () => {
+    const user = userEvent.setup()
+    await (await open(() => now)).finishQuest('2027-Q1', 'work', work)
+    await launch()
+    await user.click(button('Finish setting it up'))
+    expect(screen.getByText('Life Quest, part 1 of 6')).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'My Life Main Quest is to' }), 'run a marathon{Enter}')
+    await user.keyboard('prove it to myself{Enter}')
+    await user.keyboard('a finish time{Enter}{Enter}')
+    await user.keyboard('I never have{Enter}')
+    await user.click(button('Skip for now'))
+    await user.keyboard('Run four times a week{Enter}{Enter}')
+    await user.click(button('Finish Life Quest'))
+
+    expect(await screen.findByText('Q1 2027 is set up')).toBeInTheDocument()
+    await user.click(button('Go to Today'))
+    expect(screen.getByRole('img', { name: 'Day 81 of 92' })).toBeInTheDocument()
+    expect(boundaryLine()).toHaveTextContent('Q1 2027 is set up. It takes over on 1 Jan.')
+  })
+})

@@ -179,11 +179,16 @@ export function shortDate(date: LocalDate, withYear = false): string {
   return withYear ? `${short} ${year}` : short
 }
 
+/** "1 Jan" */
+export function dayAndMonth(date: LocalDate): string {
+  const [, month, day] = ymd(date)
+  return `${day} ${shortMonth(month)}`
+}
+
 /** "12 Nov · Day 43", or "29 Sep · before Day 1": when a Version was saved, as a History row reads (spec §9) */
 export function versionDay(savedOn: LocalDate, quarter: Quarter): string {
-  const [, month, day] = ymd(savedOn)
   const dayOfQuarter = dayOf(savedOn, quarter)
-  return `${day} ${shortMonth(month)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
+  return `${dayAndMonth(savedOn)} · ${dayOfQuarter === 'before' ? 'before Day 1' : `Day ${dayOfQuarter}`}`
 }
 
 /** "Thu 12 Nov · Day 43", with the year when it isn't today's: a Day's header in the Archive (spec §11) */

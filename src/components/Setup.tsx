@@ -19,7 +19,7 @@ import {
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { Banners } from './Banners'
-import { plain, primary } from './buttons'
+import { nav, plain, primary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { Bar, PartScreen, Words } from './PartScreen'
 import { ReadBack } from './ReadBack'
@@ -38,11 +38,13 @@ interface Props {
   quarter: Quarter
   /** From "Q4 2026 is set up" */
   onToday: () => void
+  /** Close, back to Today, for setup started from there while the Current Quarter is set up (spec §5.4) */
+  onClose?: () => void
   /** "Restore from a backup", on a phone with nothing stored */
   onRestore: () => void
 }
 
-export function Setup({ quarter: opened, onToday, onRestore }: Props) {
+export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
   const { snapshot, today, saveSetupDraft, switchSetupTarget, finishQuest } = useCadence()
   const [quarter, setQuarter] = useState(opened)
   // The words on screen, which every change saves as typed (spec §5.4)
@@ -169,6 +171,19 @@ export function Setup({ quarter: opened, onToday, onRestore }: Props) {
         {switchTo && (
           <button type="button" className="min-h-11 text-m text-given" {...keepsFocus} onClick={() => switchTarget(switchTo)}>
             Switch to {labelOf(switchTo)}
+          </button>
+        )}
+        {onClose && (
+          <button
+            type="button"
+            className={nav}
+            disabled={finishing}
+            onClick={() => {
+              dropKeyboard()
+              onClose()
+            }}
+          >
+            Close
           </button>
         )}
       </div>
