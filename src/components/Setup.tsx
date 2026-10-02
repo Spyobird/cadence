@@ -19,7 +19,7 @@ import {
 } from '../lib/store'
 import { setWriting } from '../lib/writing'
 import { Banners } from './Banners'
-import { nav, plain, primary } from './buttons'
+import { plain, primary } from './buttons'
 import { FailedSave, failureOf } from './FailedSave'
 import { Bar, PartScreen, Words } from './PartScreen'
 import { ReadBack } from './ReadBack'
@@ -191,13 +191,9 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
             Switch to {labelOf(switchTo)}
           </button>
         )}
+        {/* Quiet, as the switch is: gold goes only to a pushed screen's header buttons (DESIGN.md) */}
         {onClose && (
-          <button
-            type="button"
-            className={nav}
-            disabled={finishing}
-            onClick={close}
-          >
+          <button type="button" className="min-h-11 text-m text-given disabled:text-faint" disabled={finishing} onClick={close}>
             Close
           </button>
         )}
