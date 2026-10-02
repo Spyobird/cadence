@@ -274,7 +274,7 @@ One button, top right, opens a bottom sheet. There is no tab bar. The sheet hold
 
 - "Q4 2026" and "Day 43 of 92, 49 to go" (before Day 1: "Starts in 2 days").
 - **Work Quest** and **Life Quest** rows, each with **Edit** and **History**. The Edit button reads "Edit · unsaved changes" when that Quest has an edit Draft.
-- **Archive**, with the number of Reflections.
+- **Archive**, with the number of Reflections ("4 Reflections", "1 Reflection"), or "None yet" before the first.
 - **Backup**, with when the last backup was ("3 days ago", "Never").
 - **Appearance:** System · Light · Dark (§2.8).
 
@@ -626,7 +626,7 @@ These weren't decided in a ticket. The spec settles them so the build doesn't ha
 - The menu's Edit button notes "unsaved changes", and so does Edit's header once Save is on. Cadence opens on Today, not on the Edit screen (§6.3, §8).
 - The Reflection popup's Cancel asks before discarding changes. A Reflection or edit saved just after the Quarter ended is refused with a message, and the text is kept (§7, §8).
 - Today re-reads the date when the page becomes visible and at midnight (§3).
-- The Archive's Day header, and its empty state (§11).
+- The Archive's Day header, and its empty state (§11). The menu's Archive row reads "None yet" before the first Reflection (§6.3; the owner's choice, 2 Oct 2026).
 - The Backup screen's wording and the import Problem messages (§12), and the fresh install's "Restore from a backup" link (§12.3).
 - The update reload waits until nothing is being written, and the app has no code-splitting (§2.3).
 - The Safari-tab banner's reason text (§2.7).
