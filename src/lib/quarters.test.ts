@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   archiveDay,
+  boundaryOf,
   currentVersion,
   dayOf,
   daysUntil,
@@ -367,6 +368,42 @@ describe('screenFor', () => {
     it('does not count a Past Quarter with only its Work Quest finished as set up', () => {
       expect(screenFor(snapshotWith({ workOnly: ['2026-Q3'] }), '2026-11-01')).toEqual({ name: 'setup', quarter: '2026-Q4' })
     })
+  })
+})
+
+describe('boundaryOf (spec §6.4)', () => {
+  const q4 = snapshotWith({ setUp: ['2026-Q4'] })
+
+  it.each([
+    ['2026-09-29', 'before Day 1, though Q3 is in its last 14 days'],
+    ['2026-10-01', 'Day 1'],
+    ['2026-12-17', 'the day before the last 14 days'],
+  ])('is nothing on %s, %s', (today) => {
+    expect(boundaryOf(q4, '2026-Q4', today)).toBeUndefined()
+  })
+
+  it.each([
+    ['2026-12-18', 14], // Q4's last 14 days are 18–31 Dec
+    ['2026-12-20', 12],
+    ['2026-12-31', 1],
+  ])('on %s, in the last 14 days, counts %i days to the Upcoming Quarter, not yet set up', (today, daysToGo) => {
+    expect(boundaryOf(q4, '2026-Q4', today)).toEqual({ at: 'last-days', upcoming: '2027-Q1', daysToGo, setup: 'not-started' })
+  })
+
+  it.each<[string, Parameters<typeof snapshotWith>[0], string]>([
+    ['started, with a setup Draft', { setUp: ['2026-Q4'], drafts: ['2027-Q1'] }, 'started'],
+    ['started, with only its Work Quest finished', { setUp: ['2026-Q4'], workOnly: ['2027-Q1'], drafts: ['2027-Q1'] }, 'started'],
+    ['set up', { setUp: ['2026-Q4', '2027-Q1'] }, 'set-up'],
+  ])("knows the Upcoming Quarter's setup is %s", (_, stored, setup) => {
+    expect(boundaryOf(snapshotWith(stored), '2026-Q4', '2026-12-20')).toMatchObject({ at: 'last-days', setup })
+  })
+
+  it.each<[string, Quarter, string, Quarter]>([
+    ['the Quarter on screen ended at midnight', '2026-Q4', '2027-01-01', '2027-Q1'],
+    ['a Quarter was skipped entirely', '2026-Q3', '2027-01-15', '2027-Q1'],
+    ['the skipped Quarter is in its last 14 days', '2026-Q3', '2026-12-20', '2026-Q4'],
+  ])('has ended when %s, and the Current Quarter is the one to set up', (_, quarter, today, next) => {
+    expect(boundaryOf(snapshotWith({ setUp: [quarter] }), quarter, today)).toEqual({ at: 'ended', next })
   })
 })
 

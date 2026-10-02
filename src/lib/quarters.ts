@@ -276,6 +276,22 @@ export function isBackupDue(snapshot: Snapshot, today: LocalDate): boolean {
   )
 }
 
+/** What Today says under the date at a Quarter's boundary (spec §6.4) */
+export type Boundary =
+  /** The Current Quarter's last 14 days: the Upcoming Quarter, the days until it starts, and how far its setup has got */
+  | { at: 'last-days'; upcoming: Quarter; daysToGo: number; setup: 'not-started' | 'started' | 'set-up' }
+  /** The Quarter on Today has ended, and `next`, the Current Quarter, is the one to set up (spec §3.1) */
+  | { at: 'ended'; next: Quarter }
+
+/** Where the Quarter on Today stands at a boundary, or undefined on any other Day */
+export function boundaryOf(snapshot: Snapshot, quarter: Quarter, today: LocalDate): Boundary | undefined {
+  if (isPast(quarter, today)) return { at: 'ended', next: quarterOf(today) }
+  if (quarter !== quarterOf(today) || setupTarget(today) === quarter) return undefined
+  const upcoming = nextQuarter(quarter)
+  const setup = isSetUp(snapshot, upcoming) ? 'set-up' : snapshot.setupDrafts[upcoming] ? 'started' : 'not-started'
+  return { at: 'last-days', upcoming, daysToGo: daysUntil(today, firstDayOf(upcoming)), setup }
+}
+
 /** Which screen Cadence opens on (spec §3.1) */
 export type Screen =
   /** Today for the Current Quarter */
