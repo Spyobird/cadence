@@ -2,10 +2,10 @@
 // and the ended state when nothing new is set up
 
 import 'fake-indexeddb/auto'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IDBFactory } from 'fake-indexeddb'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { open, type QuestContent } from './lib/store'
 import { aMomentLater, pretendOpened } from './test/phone'
@@ -130,6 +130,23 @@ describe('setup started from Today (spec §5.4)', () => {
     expect(mainQuestField()).toHaveValue('write the book')
   })
 
+  it('carries on past midnight into the new Quarter, which it now resumes, so Close goes', async () => {
+    const user = userEvent.setup()
+    itIs('2026-12-31T23:58')
+    await launch()
+    await user.click(button('Set it up'))
+    await user.type(mainQuestField(), 'write the book')
+    expect(button('Close')).toBeInTheDocument()
+
+    itIs('2027-01-01T00:01')
+    act(() => void document.dispatchEvent(new Event('visibilitychange')))
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    await user.type(mainQuestField(), ' this year')
+    await aMomentLater()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect((await open(() => now)).snapshot().setupDrafts['2027-Q1']?.work.mainQuest).toBe('write the book this year')
+  })
+
   it('finishes the Upcoming Quarter, and "Go to Today" comes back to the Current one, which says so', async () => {
     const user = userEvent.setup()
     await (await open(() => now)).finishQuest('2027-Q1', 'work', work)
@@ -231,5 +248,44 @@ describe('the ended state (spec §6.4)', () => {
     expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
     expect(mainQuestField()).toHaveValue('')
     expect((await open(() => now)).snapshot().setupDrafts['2026-Q4']?.work.mainQuest).toBe('write the book')
+  })
+})
+
+describe('the handover at midnight on 1 Jan (spec §3.1)', () => {
+  afterEach(() => vi.useRealTimers())
+
+  /** Opens Cadence on Today at 23:59:58 on 31 Dec, and lets the clock run past midnight */
+  async function openOnTheLastDay() {
+    vi.useFakeTimers({ now: new Date('2026-12-31T23:59:58'), toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    render(<App store={await open(() => new Date())} />)
+    expect(screen.getByRole('img', { name: 'Day 92 of 92' })).toBeInTheDocument()
+    await act(() => vi.advanceTimersByTimeAsync(2000))
+  }
+
+  it('hands Today over to a set-up Q1 2027', async () => {
+    await setUp('2027-Q1', '2026-12-20T10:00')
+    await openOnTheLastDay()
+    expect(screen.getByRole('img', { name: 'Day 1 of 90' })).toBeInTheDocument()
+    expect(screen.getByText('Friday 1 Jan')).toBeInTheDocument()
+    expect(screen.queryByTestId('boundary')).not.toBeInTheDocument()
+    expect(page('Work').getByRole('button', { name: "Write today's Reflection" })).toBeInTheDocument()
+  })
+
+  it("resumes a Q1 2027 Draft started in December", async () => {
+    await (await open(() => new Date('2026-12-20T10:00'))).saveSetupDraft('2027-Q1', {
+      at: { quest: 'work', part: 'whyItMatters' },
+      work: { mainQuest: 'write the book' },
+      life: {},
+    })
+    await openOnTheLastDay()
+    expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
+    expect(screen.getByText('Work Quest, part 2 of 6')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
+
+  it('ends the Quarter when nothing new is set up', async () => {
+    await openOnTheLastDay()
+    expect(screen.getByRole('img', { name: 'Q4 2026 has ended' })).toBeInTheDocument()
+    expect(screen.getByText('Q4 2026 is over. Its Quests are kept as they were.')).toBeInTheDocument()
   })
 })
