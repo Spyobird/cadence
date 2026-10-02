@@ -37,6 +37,7 @@ A minimal, local-first PWA for one iPhone: each Quarter the owner writes a Work 
 
 - **The real thing:** push to `main`, wait for the deploy, and open `https://spyobird.github.io/cadence/` on the iPhone.
 - **A local build:** `npm run build && npm run preview` serves `http://localhost:4173/cadence/`. A service worker and install need HTTPS, so tunnel it for the phone (`npx ngrok http 4173`).
+- **Another date:** a dev build (`npm run dev`, tunnelled the same way) takes `?today=2026-12-20` or `?today=2026-12-31T23:58` to walk the boundary states; a production build leaves the override out (`src/lib/dateOverride.ts`).
 - **Real data lives only in the installed app.** Test in a Safari tab or a tunnel freely; never delete the Home Screen icon without a fresh Backup.
 
 ## Agent skills
