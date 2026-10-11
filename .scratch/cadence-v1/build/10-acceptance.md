@@ -1,7 +1,7 @@
 # v1 acceptance
 
 Type: build (HITL: the owner's phone check)
-Status: open
+Status: done
 Blocked by: 09, 11
 
 ## Goal
@@ -14,7 +14,11 @@ v1 is proven on the phone, end to end, in light and dark. After that the owner d
 
 ## Scope
 
-1. **Run the full check:** the owner runs the whole §15.2 list at the real address, and the boundary states through the dev date override. The results, with the iOS version, go under `## Phone check` in this ticket.
+1. **Run the full check:** the owner runs the whole §15.2 list at the real address, and the boundary states through the dev date override. The results, with the iOS version, go under `## Build notes
+
+- **11 Oct 2026:** the owner checked the Changelog, confirmed v1 and asked for the tag. `[Unreleased]` became `[1.0.0] - 2026-10-11`, and the commit is tagged `v1.0.0`, so the build stamp reads `v1.0.0`.
+
+## Phone check` in this ticket.
 2. **Fixes:** every failure becomes a new build ticket in this folder, and this one waits for them.
 3. **Changelog:** `CHANGELOG.md`'s `[Unreleased]` reads as a complete, plain-words list of what v1 does.
 4. **Tagging:** when the owner says so, `[Unreleased]` becomes the release, and the commit is tagged. The build stamp then shows the tag.
@@ -22,7 +26,7 @@ v1 is proven on the phone, end to end, in light and dark. After that the owner d
 ## Done when
 
 - [x] Every §15.2 check passes on the phone, or has a closed fix ticket.
-- [ ] The owner has confirmed v1. Tagging happens when they ask.
+- [x] The owner has confirmed v1. Tagging happens when they ask.
 
 ## Phone check
 

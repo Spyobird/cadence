@@ -4,6 +4,8 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-11
+
 ### Added
 
 - Cadence installs from its permanent address, `spyobird.github.io/cadence/`, with the day-ring icon.
@@ -37,3 +39,6 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 ### Removed
 
 - The first version of the app. Its data isn't carried over.
+
+[unreleased]: https://github.com/Spyobird/cadence/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Spyobird/cadence/releases/tag/v1.0.0
