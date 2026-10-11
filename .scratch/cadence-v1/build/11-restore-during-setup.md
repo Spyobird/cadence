@@ -1,7 +1,7 @@
 # Restore during setup
 
 Type: build (AFK)
-Status: open
+Status: done
 Blocked by:
 
 ## Goal
@@ -20,10 +20,17 @@ Setup always has a way to the Backup screen. Today, "Restore from a backup" goes
 
 ## Done when
 
-- [ ] After typing, the link is still there, on later parts too.
-- [ ] Close on the Backup screen brings back every word typed, even on a slow phone.
-- [ ] Setup opened from Today, with Close, has no link.
-- [ ] `npx tsc --noEmit`, `npm test -- --run` and `npm run build` pass.
+- [x] After typing, the link is still there, on later parts too.
+- [x] Close on the Backup screen brings back every word typed, even on a slow phone.
+- [x] Setup opened from Today, with Close, has no link.
+- [x] `npx tsc --noEmit`, `npm test -- --run` and `npm run build` pass.
+
+## Build notes
+
+- **The rule** is now "setup has no Close" (`Setup.tsx`), in place of "nothing is stored". That also covers setup carried past midnight on 1 Jan, which loses Close: it now shows the link too, where before there was no way to the Backup screen until the Quarter was set up.
+- **Leaving** waits for the last save, as Close does (`restore()` beside `close()`).
+- **Tests:** `Backup.test.tsx` (the link stays after typing and on part 2; Close brings the words back on a slow phone), `QuartersEnd.test.tsx` (no link with Close; the link appears when Close goes at midnight). Both guards were checked against the old rule and against a link that always shows, and each fails one of them.
+- tsc, 420 tests and the build pass.
 
 ## Phone check
 
