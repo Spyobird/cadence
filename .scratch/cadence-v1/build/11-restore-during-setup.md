@@ -35,3 +35,5 @@ Setup always has a way to the Backup screen. Today, "Restore from a backup" goes
 ## Phone check
 
 With ticket 10's full check: on a fresh install, type a few words in setup, tap "Restore from a backup", then Close and check the words are back. Then import a backup from there.
+
+- **11 Oct 2026, the owner, iOS 26.6.2:** passes.

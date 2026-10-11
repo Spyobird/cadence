@@ -21,10 +21,10 @@ v1 is proven on the phone, end to end, in light and dark. After that the owner d
 
 ## Done when
 
-- [ ] Every §15.2 check passes on the phone, or has a closed fix ticket.
+- [x] Every §15.2 check passes on the phone, or has a closed fix ticket.
 - [ ] The owner has confirmed v1. Tagging happens when they ask.
 
 ## Phone check
 
-- **11 Oct 2026, the owner:** the full §15.2 list passes, boundary states included. iOS version: not yet recorded.
-- **One tweak:** "Restore from a backup" goes once anything is typed in setup, which leaves no way to restore until a Quarter is set up. [Restore during setup](11-restore-during-setup.md) fixes it, and this ticket waits for it.
+- **11 Oct 2026, the owner, iOS 26.6.2:** the full §15.2 list passes, boundary states included.
+- **One tweak:** "Restore from a backup" goes once anything is typed in setup, which leaves no way to restore until a Quarter is set up. [Restore during setup](11-restore-during-setup.md) fixes it, and passes on the phone.

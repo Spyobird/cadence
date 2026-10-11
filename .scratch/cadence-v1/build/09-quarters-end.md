@@ -53,3 +53,5 @@ Cadence handles the end of a Quarter: offering setup of the next one in the last
 ## Phone check
 
 At slice 10 (§15.2), through a dev tunnel with `?today=`: 18 Dec and 31 Dec; 20 Dec with Q1 not started, started and set up, including Close; 31 Dec at 23:58 across midnight, with the popup and an edit refused and setup from Today carrying on; 2 Jan, ended; and a skipped Quarter.
+
+- **11 Oct 2026, the owner, iOS 26.6.2:** passes, in ticket 10's full check.
