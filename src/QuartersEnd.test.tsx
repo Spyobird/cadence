@@ -106,6 +106,8 @@ describe('setup started from Today (spec §5.4)', () => {
     expect(screen.getByText('Q1 2027 · 1 Jan – 31 Mar')).toBeInTheDocument()
     expect(screen.getByText('Work Quest, part 1 of 6')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Switch to/ })).not.toBeInTheDocument()
+    // Today's menu is the way to the Backup screen
+    expect(screen.queryByRole('button', { name: 'Restore from a backup' })).not.toBeInTheDocument()
     await user.type(mainQuestField(), 'write the book')
     await user.click(button('Close'))
 
@@ -142,7 +144,7 @@ describe('setup started from Today (spec §5.4)', () => {
     expect(mainQuestField()).toHaveValue('write the book')
   })
 
-  it('carries on past midnight into the new Quarter, which it now resumes, so Close goes', async () => {
+  it('carries on past midnight into the new Quarter, which it now resumes, so Close goes and "Restore from a backup" comes', async () => {
     const user = userEvent.setup()
     itIs('2026-12-31T23:58')
     await launch()
@@ -153,6 +155,7 @@ describe('setup started from Today (spec §5.4)', () => {
     itIs('2027-01-01T00:01')
     act(() => void document.dispatchEvent(new Event('visibilitychange')))
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    expect(button('Restore from a backup')).toBeInTheDocument()
     await user.type(mainQuestField(), ' this year')
     await aMomentLater()
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()

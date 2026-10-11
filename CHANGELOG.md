@@ -21,7 +21,7 @@ What changed in Cadence on the phone. The format follows [Keep a Changelog 1.1.0
 - Backup export and import: one file holding everything, saved to Files, and imported after a preview to replace everything.
 - The Backup screen says when the last backup was, and whether the iPhone keeps Cadence's storage.
 - The menu shows a gold dot when a backup is due, and its Backup row says when the last one was.
-- A fresh install offers "Restore from a backup" on its first setup screen.
+- Setup offers "Restore from a backup" on every screen while it has no menu, even after words are typed, and Close on the Backup screen brings them all back.
 - A Reflection per Quest per Day, written under the day's Prompt from each Quest's page on Today, and changeable until midnight.
 - Editing a Quest from the menu: tap a part of the read-back to change it on its own screen, then Save. A Quest keeps one Version a day, and a save that changes nothing adds none.
 - An unsaved edit is kept when Cadence is closed, even into the next day, and the menu's Edit says "unsaved changes" until it's saved or discarded.

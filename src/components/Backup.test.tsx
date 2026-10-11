@@ -13,6 +13,7 @@ import {
   pretendOpened,
   pretendShareSheet,
   pretendStorage,
+  slowPhone,
 } from '../test/phone'
 
 let now: Date
@@ -339,12 +340,25 @@ describe('restoring onto a fresh install', () => {
     expect(screen.getByRole('textbox', { name: 'My Work Main Quest is to' })).toHaveValue('')
   })
 
-  it('goes once anything is typed', async () => {
+  it('closes back to setup with every word typed, once it has landed in the Draft', async () => {
+    const user = userEvent.setup()
+    await launch(slowPhone())
+    await user.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
+    await user.click(restoreLink()!)
+    await user.click(await screen.findByRole('button', { name: 'Close' }))
+    expect(screen.getByRole('textbox', { name: 'My Work Main Quest is to' })).toHaveValue('ship')
+  })
+
+  it('stays once words are typed, on every part, since setup has no menu', async () => {
     const user = userEvent.setup()
     await launch()
     await user.type(screen.getByRole('textbox', { name: 'My Work Main Quest is to' }), 'ship')
     await aMomentLater()
-    expect(restoreLink()).not.toBeInTheDocument()
+    expect(restoreLink()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('Work Quest, part 2 of 6')).toBeInTheDocument()
+    expect(restoreLink()).toBeInTheDocument()
   })
 })
 

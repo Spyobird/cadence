@@ -40,7 +40,7 @@ interface Props {
   onToday: () => void
   /** Close, back to Today, for setup started from there while the Current Quarter is set up (spec §5.4) */
   onClose?: () => void
-  /** "Restore from a backup", on a phone with nothing stored */
+  /** "Restore from a backup", while setup has no Close and so no menu (spec §12.3) */
   onRestore: () => void
 }
 
@@ -110,6 +110,12 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
     if (await lastSave.current) onClose?.()
   }
 
+  /** To the Backup screen, as Close leaves: its Close brings setup back as it was */
+  async function restore() {
+    dropKeyboard()
+    if (await lastSave.current) onRestore()
+  }
+
   function moveTo(to: Part | 'readBack', next: QuestDraft = questDraft) {
     setMoved(true)
     save({ ...draft, at: { quest, part: to }, [quest]: next })
@@ -144,9 +150,6 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
       showFailure(error)
     })
   }
-
-  // A fresh install, perhaps after the icon was deleted, has no menu: this is its way to the Backup screen
-  const nothingStored = Object.keys(snapshot.quarters).length + Object.keys(snapshot.setupDrafts).length === 0
 
   const content: QuestContent = { ...EMPTY, ...questDraft }
   const canFinish = isComplete(tidyQuest(content)) && !finishing
@@ -246,11 +249,12 @@ export function Setup({ quarter: opened, onToday, onClose, onRestore }: Props) {
           slideIn={moved}
           head={head}
           foot={
-            nothingStored && (
+            // Setup without Close has no menu: this is its way to the Backup screen, perhaps after the icon was deleted
+            !onClose && (
               <button
                 type="button"
                 className={`${link} mt-2 text-left text-faint`}
-                onClick={onRestore}
+                onClick={restore}
               >
                 Restore from a backup
               </button>
